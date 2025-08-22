@@ -1,4 +1,4 @@
-from consts import WIDTH, HEIGHT, Direction
+from .consts import WIDTH, HEIGHT, Direction
 
 
 def is_valid(center_x: int, center_y: int):

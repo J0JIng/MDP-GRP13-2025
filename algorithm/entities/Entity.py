@@ -1,6 +1,6 @@
 from typing import List
-from consts import Direction, EXPANDED_CELL, SCREENSHOT_COST
-from helper import is_valid
+from ..consts import Direction, EXPANDED_CELL, SCREENSHOT_COST
+from algorithm.helper import is_valid
 
 
 class CellState:
