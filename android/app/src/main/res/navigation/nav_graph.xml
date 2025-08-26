@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/nav_bluetooth">
+
+    <!-- Use FULL package names to avoid “unresolved class” -->
+    <fragment
+        android:id="@+id/nav_bluetooth"
+        android:name="com.example.androidmdpgrp13.BluetoothFragment"
+        android:label="@string/nav_bluetooth" />
+
+    <fragment
+        android:id="@+id/nav_controller"
+        android:name="com.example.androidmdpgrp13.ControllerFragment"
+        android:label="@string/nav_controller" />
+
+    <fragment
+        android:id="@+id/nav_messages"
+        android:name="com.example.androidmdpgrp13.MessagesFragment"
+        android:label="@string/nav_messages" />
+</navigation>

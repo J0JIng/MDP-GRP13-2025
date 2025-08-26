@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="220dp" android:height="220dp" android:viewportWidth="220" android:viewportHeight="220">
+    <!-- outer circles -->
+    <path android:fillColor="#00000000" android:strokeColor="#88BFDDEE" android:strokeWidth="2"
+        android:pathData="M110,10 A100,100 0 1,1 109.9,10"/>
+    <path android:fillColor="#00000000" android:strokeColor="#66BFDDEE" android:strokeWidth="2"
+        android:pathData="M110,35 A75,75 0 1,1 109.9,35"/>
+    <path android:fillColor="#00000000" android:strokeColor="#44BFDDEE" android:strokeWidth="2"
+        android:pathData="M110,60 A50,50 0 1,1 109.9,60"/>
+    <!-- center dot -->
+    <path android:fillColor="#0BA4A6" android:pathData="M110,104a6,6 0 1,0 0.01,0z"/>
+    <!-- sweep arm -->
+    <path android:fillColor="#330BA4A6"
+        android:pathData="M110,110 L110,20 A90,90 0 0,1 170,170z"/>
+</vector>

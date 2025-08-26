@@ -1,0 +1,30 @@
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:layout_marginBottom="10dp" android:foreground="?attr/selectableItemBackground"
+    android:clickable="true" android:focusable="true">
+
+    <LinearLayout
+        android:padding="12dp" android:orientation="vertical"
+        android:layout_width="match_parent" android:layout_height="wrap_content">
+
+        <TextView android:id="@+id/tvName" android:text="Unknown Device"
+            android:textStyle="bold" android:textSize="16sp"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+
+        <TextView android:id="@+id/tvMac" android:text="70:A8:D3:A4:A3:2A"
+            android:textSize="12sp" android:textColor="@android:color/darker_gray"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"/>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="end" android:layout_marginTop="8dp">
+            <ImageButton
+                android:id="@+id/btnConnect"
+                android:layout_width="36dp" android:layout_height="36dp"
+                android:backgroundTint="?attr/colorPrimary"
+                android:background="@drawable/bg_icon_btn"
+                android:contentDescription="Connect"
+                android:src="@drawable/ic_bolt"/>
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
