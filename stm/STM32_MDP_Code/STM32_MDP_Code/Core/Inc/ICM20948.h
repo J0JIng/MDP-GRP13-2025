@@ -29,9 +29,9 @@ static const uint8_t REG_TEMP_L   = 0x3A; // address of temperature register (@B
 /* ============================================
    [APPLICATION] ICM-20948 User Bank 0 Registers
    ============================================ */
-#define REG_ADD_WIA             	0x00
-#define REG_VAL_WIA             	0xEA
-#define REG_ADD_USER_CTRL       	0x03
+#define REG_ADD_WIA             	   0x00
+#define REG_VAL_WIA             	   0xEA
+#define REG_ADD_USER_CTRL       	   0x03
 #define REG_VAL_BIT_DMP_EN          0x80
 #define REG_VAL_BIT_FIFO_EN         0x40
 #define REG_VAL_BIT_I2C_MST_EN      0x20
@@ -40,11 +40,11 @@ static const uint8_t REG_TEMP_L   = 0x3A; // address of temperature register (@B
 #define REG_VAL_BIT_DIAMOND_DMP_RST 0x04
 #define REG_ADD_PWR_MGMT_1     		0x06
 //#define REG_VAL_ALL_RGE_RESET   	0xF1    // Should be 0xF1 if want to reset - pg 27 of datasheet
-#define REG_VAL_ALL_RGE_RESET   	0xF1    // Reset device registers - pg 27 of datasheet
-#define REG_VAL_RUN_MODE        	0x01    // Device run with auto selects the best available clock source - pg 37 of datasheeet
+#define REG_VAL_ALL_RGE_RESET   	   0xF1    // Reset device registers - pg 27 of datasheet
+#define REG_VAL_RUN_MODE        	   0x01    // Device run with auto selects the best available clock source - pg 37 of datasheeet
 #define REG_ADD_LP_CONFIG      	 	0x05
 //#define REG_ADD_PWR_MIGMT_1      	0x06
-#define REG_ADD_PWR_MGMT_2      	0x07
+#define REG_ADD_PWR_MGMT_2      	   0x07
 #define REG_VAL_ACCEL_GYROLL_OFF   (0x38 | 0x07)  // see page 28
 #define REG_VAL_ACCEL_GYROLL_ON    (0x00 | 0x00)
 #define REG_ADD_INT_PIN_CFG      	0x0F  // Reference page 38
@@ -65,18 +65,18 @@ static const uint8_t REG_TEMP_L   = 0x3A; // address of temperature register (@B
 #define REG_ADD_TEMP_OUT_H       	0x39
 #define REG_ADD_TEMP_OUT_L       	0x3A
 #define REG_ADD_EXT_SENS_DATA_00 	0x3B
-#define REG_ADD_REG_BANK_SEL    	0x7F
-#define REG_VAL_REG_BANK_0  	 	0x00
-#define REG_VAL_REG_BANK_1  	 	0x10
-#define REG_VAL_REG_BANK_2  	 	0x20
-#define REG_VAL_REG_BANK_3  	 	0x30
+#define REG_ADD_REG_BANK_SEL    	   0x7F
+#define REG_VAL_REG_BANK_0  	 	   0x00
+#define REG_VAL_REG_BANK_1  	 	   0x10
+#define REG_VAL_REG_BANK_2  	 	   0x20
+#define REG_VAL_REG_BANK_3  	 	   0x30
 
 /* ============================================
    [APPLICATION] ICM-20948 user bank 1 & 2 Registers
    ============================================ */
-#define REG_ADD_GYRO_SMPLRT_DIV 	0x00
-#define REG_ADD_GYRO_CONFIG_1   	0x01
-#define REG_ADD_GYRO_CONFIG_2   	0x02
+#define REG_ADD_GYRO_SMPLRT_DIV 	   0x00
+#define REG_ADD_GYRO_CONFIG_1   	   0x01
+#define REG_ADD_GYRO_CONFIG_2   	   0x02
 #define REG_VAL_BIT_GYRO_DLPCFG_2   0x10 /* bit[5:3] */
 #define REG_VAL_BIT_GYRO_DLPCFG_4   0x20 /* bit[5:3] */
 #define REG_VAL_BIT_GYRO_DLPCFG_6   0x30 /* bit[5:3]  LPF = 5.7 Hz pg 59 */
@@ -118,14 +118,14 @@ static const uint8_t REG_TEMP_L   = 0x3A; // address of temperature register (@B
 /* ============================================
    [APPLICATION] ICM-20948 Magnetometer Registers
    ============================================*/
-#define MAG_DATA_LEN 6
-#define REG_ADD_MAG_WIA1    0x00
-#define REG_VAL_MAG_WIA1    0x48
-#define REG_ADD_MAG_WIA2    0x01
-#define REG_VAL_MAG_WIA2    0x09
-#define REG_ADD_MAG_ST2     0x10
-#define REG_ADD_MAG_DATA    0x11
-#define REG_ADD_MAG_CNTL2   0x31
+#define MAG_DATA_LEN            6
+#define REG_ADD_MAG_WIA1        0x00
+#define REG_VAL_MAG_WIA1        0x48
+#define REG_ADD_MAG_WIA2        0x01
+#define REG_VAL_MAG_WIA2        0x09
+#define REG_ADD_MAG_ST2         0x10
+#define REG_ADD_MAG_DATA        0x11
+#define REG_ADD_MAG_CNTL2       0x31
 #define REG_VAL_MAG_MODE_PD     0x00
 #define REG_VAL_MAG_MODE_SM     0x01
 #define REG_VAL_MAG_MODE_10HZ   0x02
@@ -158,19 +158,19 @@ static const uint8_t REG_TEMP_L   = 0x3A; // address of temperature register (@B
    =========================== */
 #define WHO_AM_I  		   0x00 // [ICM20948] Should return 0xEA
 #define USER_CTRL          0x03 // Bit 7 enable DMP, bit 3 reset DMP
-#define LP_CONFIG		   0x05
+#define LP_CONFIG		      0x05
 #define PWR_MGMT_1         0x06 // Device defaults to the SLEEP mode
 #define PWR_MGMT_2         0x07
 #define INT_PIN_CFG        0x0F
 #define INT_ENABLE         0x10
-#define INT_ENABLE_1	   0x11
-#define INT_ENABLE_2	   0x12
-#define INT_ENABLE_3	   0x13
+#define INT_ENABLE_1	      0x11
+#define INT_ENABLE_2	      0x12
+#define INT_ENABLE_3	      0x13
 #define I2C_MST_STATUS     0x17
 #define INT_STATUS         0x19
-#define INT_STATUS_1	   0x1A
-#define INT_STATUS_2	   0x1B
-#define INT_STATUS_3	   0x1C
+#define INT_STATUS_1	      0x1A
+#define INT_STATUS_2	      0x1B
+#define INT_STATUS_3	      0x1C
 #define DELAY_TIMEH		   0x28
 #define DELAY_TIMEL		   0x29
 #define ACCEL_XOUT_H       0x2D
@@ -213,14 +213,14 @@ static const uint8_t REG_TEMP_L   = 0x3A; // address of temperature register (@B
 #define EXT_SENS_DATA_23   0x52
 #define FIFO_EN_1          0x66
 #define FIFO_EN_2          0x67
-#define FIFO_RST		   0x68
-#define FIFO_MODE		   0x69
+#define FIFO_RST		      0x68
+#define FIFO_MODE		      0x69
 #define FIFO_COUNTH        0x70
 #define FIFO_COUNTL        0x71
 #define FIFO_R_W           0x72
 #define DATA_RDY_STATUS	   0x74
-#define FIFO_CFG		   0x76
-#define REG_BANK_SEL	   0x7F
+#define FIFO_CFG		      0x76
+#define REG_BANK_SEL	      0x7F
 /* USER Bank 0 Map End */
 
 
@@ -239,39 +239,39 @@ static const uint8_t REG_TEMP_L   = 0x3A; // address of temperature register (@B
 #define YA_OFFSET_L       			0x18
 #define ZA_OFFSET_H       			0x1A
 #define ZA_OFFSET_L       			0x1B
-#define TIMEBASE_CORRECTION_PLL		0x28
+#define TIMEBASE_CORRECTION_PLL	0x28
 /* USER Bank 1 Map End */
 
 
 /* ===========================
    User Bank 2 Register Map
    =========================== */
-#define GYRO_SMPLRT_DIV        	0x00
-#define GYRO_CONFIG_1      		0x01
-#define GYRO_CONFIG_2      		0x02
+#define GYRO_SMPLRT_DIV       0x00
+#define GYRO_CONFIG_1      	0x01
+#define GYRO_CONFIG_2      	0x02
 #define XG_OFFSET_H       		0x03  // User-defined trim values for gyroscope
 #define XG_OFFSET_L       		0x04
 #define YG_OFFSET_H       		0x05
 #define YG_OFFSET_L       		0x06
 #define ZG_OFFSET_H       		0x07
 #define ZG_OFFSET_L       		0x08
-#define ODR_ALIGN_EN			0x09
-#define ACCEL_SMPLRT_DIV_1     	0x10
-#define ACCEL_SMPLRT_DIV_2     	0x11
+#define ODR_ALIGN_EN			   0x09
+#define ACCEL_SMPLRT_DIV_1    0x10
+#define ACCEL_SMPLRT_DIV_2    0x11
 #define ACCEL_INTEL_CTRL		0x12
 #define ACCEL_WOM_THR			0x13 // (could be WOM_THR)
 #define ACCEL_CONFIG      		0x14
-#define ACCEL_CONFIG_2     		0x15 // (could be ACCEL_CONFIG2)
-#define FSYNC_CONFIG			0x52
+#define ACCEL_CONFIG_2     	0x15 // (could be ACCEL_CONFIG2)
+#define FSYNC_CONFIG			   0x52
 #define TEMP_CONFIG				0x53
-#define MOD_CTRL_USR			0x54
+#define MOD_CTRL_USR			   0x54
 /* USER Bank 2 Map End */
 
 
 /* ===========================
    User Bank 3 Register Map
    =========================== */
-#define I2C_MST_ODR_CONFIG		0x00
+#define I2C_MST_ODR_CONFIG		   0x00
 #define I2C_MST_CTRL       		0x01
 #define I2C_MST_DELAY_CTRL 		0x02
 #define I2C_SLV0_ADDR      		0x03
