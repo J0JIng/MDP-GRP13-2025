@@ -1,0 +1,19 @@
+[project]
+name = "rpi"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9,<3.10"
+dependencies = [
+  "pybluez2==0.46",
+  "pyyaml>=6.0.2",
+]
+
+[tool.uv.sources]
+pybluez2 = [
+  # Windows x64 (Python 3.9)
+  { path = "vendor/pybluez2-0.42-cp39-cp39-win_amd64.whl", marker = "sys_platform == 'win32' and platform_machine == 'AMD64'" },
+
+  # Raspberry Pi OS (Buster, 32-bit userspace), this wheel is built for the Raspberry Pi
+  { path = "vendor/pybluez2-0.42-cp39-cp39-linux_armv7l.whl", marker = "sys_platform == 'linux' and platform_machine == 'armv7l'" }
+]
