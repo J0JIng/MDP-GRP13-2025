@@ -10,7 +10,7 @@ UUID_RE = re.compile(
     r"[0-9a-fA-F]{12}$"
 )
 
-def load_bt_config(path: str = "android_link.yaml") -> Dict[str, Any]:
+def load_bt_config(path: str = "config/android_link.yaml") -> Dict[str, Any]:
     """Load Bluetooth config from YAML without applying defaults."""
     with open(path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
@@ -27,7 +27,7 @@ def load_bt_config(path: str = "android_link.yaml") -> Dict[str, Any]:
     bt["resolved_uuid"] = custom_uuid
     return data
 
-def load_stm32_config(path: str = "stm32_link.yaml") -> Dict[str, Any]:
+def load_stm32_config(path: str = "config/stm32_link.yaml") -> Dict[str, Any]:
     """Load STM32 config from YAML without applying defaults."""
     with open(path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}

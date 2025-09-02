@@ -1,5 +1,11 @@
+from link.android_link import AndroidLink
+from link.stm32_link import STMLink
+
+
 def main():
-    print("Hello from rpi!")
+    android_link = AndroidLink()
+
+    stm_link = STMLink()
 
 
 if __name__ == "__main__":

@@ -20,7 +20,9 @@ class Link(Generic[SendT, RecvT], ABC):
     """
 
     def __init__(self) -> None:
-        self.logger = prepare_logger()
+        # Name logger after subclass (e.g. link.android_link.AndroidLink)
+        logger_name = f"{self.__class__.__module__}.{self.__class__.__name__}"
+        self.logger = prepare_logger(name=logger_name)
 
     @abstractmethod
     def send(self, message: SendT) -> None:

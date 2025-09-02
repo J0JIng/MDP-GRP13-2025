@@ -65,11 +65,12 @@ class AndroidLink(Link):
     where `x`, `y` is the location of the robot, and `d` is its direction.
     """
 
-    def __init__(self, config_path: str = "android_link.yaml"):
+    def __init__(self):
         super().__init__()
+        self.logger.debug("Initializing AndroidLink")
         self.client_sock = None
         self.server_sock = None
-        self.config = load_bt_config(config_path)
+        self.config = load_bt_config()
 
     def connect(self):
         """Start Bluetooth server and wait for Android to connect."""

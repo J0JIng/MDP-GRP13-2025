@@ -37,6 +37,7 @@ class STMLink(Link):
         Constructor for STMLink.
         """
         super().__init__()
+        self.logger.debug("Initializing STMLink")
         self.serial_link = None
         self.config = load_stm32_config()
 
