@@ -1,6 +1,18 @@
+import json
+from multiprocessing import Manager, Process
+import os
+import queue
+import time
+from config.consts import SYMBOL_MAP
+from config.load_config import load_rpi_config
 from helper.logger import prepare_logger
 from link.android_link import AndroidLink
 from link.stm32_link import STMLink
+from typing import Optional
+import requests
+
+from message.android import AndroidMessage
+from model.pi_action import PiAction
 
 
 class RaspberryPi:
@@ -13,6 +25,7 @@ class RaspberryPi:
         Initializes the Raspberry Pi.
         """
         self.logger = prepare_logger()
+        self.config = load_rpi_config()
         self.android_link = AndroidLink()
         self.stm_link = STMLink()
 
@@ -93,19 +106,23 @@ class RaspberryPi:
         while True:
             # Wait for android connection to drop
             self.android_dropped.wait()
-
             self.logger.error("Android link is down!")
 
             # Kill child processes
             self.logger.debug("Killing android child processes")
-            self.proc_android_sender.kill()
-            self.proc_recv_android.kill()
+            if self.proc_android_sender:
+                self.proc_android_sender.kill()
+            if self.proc_recv_android:
+                self.proc_recv_android.kill()
 
             # Wait for the child processes to finish
-            self.proc_android_sender.join()
-            self.proc_recv_android.join()
-            assert self.proc_android_sender.is_alive() is False
-            assert self.proc_recv_android.is_alive() is False
+            if self.proc_android_sender:
+                self.proc_android_sender.join()
+                assert self.proc_android_sender.is_alive() is False
+            if self.proc_recv_android:
+                self.proc_recv_android.join()
+                assert self.proc_recv_android.is_alive() is False
+
             self.logger.debug("Android child processes killed")
 
             # Clean up old sockets
@@ -186,7 +203,11 @@ class RaspberryPi:
         """
         while True:
 
-            message: str = self.stm_link.recv()
+            message: Optional[str] = self.stm_link.recv()
+
+            if message is None:
+                self.logger.warning("No message received from STM32.")
+                continue
 
             if message.startswith("ACK"):
                 if self.rs_flag == False:
@@ -240,7 +261,7 @@ class RaspberryPi:
 
     def command_follower(self) -> None:
         """
-        [Child Process] 
+        [Child Process]
         """
         while True:
             # Retrieve next movement command
@@ -288,8 +309,12 @@ class RaspberryPi:
 
                     self.logger.info("Attempting to go to failed obstacles")
                     self.failed_attempt = True
-                    self.request_algo({'obstacles': new_obstacle_list, 'mode': '0'},
-                                      self.current_location['x'], self.current_location['y'], self.current_location['d'], retrying=True)
+                    self.request_algo(
+                        {'obstacles': new_obstacle_list, 'mode': '0'},
+                        self.current_location['x'],
+                        self.current_location['y'],
+                        self.current_location['d'],
+                        retrying=True)
                     self.retrylock = self.manager.Lock()
                     self.movement_lock.release()
                     continue
@@ -328,6 +353,9 @@ class RaspberryPi:
         The response is then forwarded back to the android
         :param obstacle_id_with_signal: the current obstacle ID followed by underscore followed by signal
         """
+        API_IP = self.config['api']['ip']
+        API_PORT = self.config['api']['port']
+
         obstacle_id, signal = obstacle_id_with_signal.split("_")
         self.logger.info(f"Capturing image for obstacle id: {obstacle_id}")
         self.android_queue.put(AndroidMessage(
@@ -341,8 +369,11 @@ class RaspberryPi:
         config_file = "/home/" + Home_Files[0] + "/" + con_file
 
         extns = ['jpg', 'png', 'bmp', 'rgb', 'yuv420', 'raw']
-        shutters = [-2000, -1600, -1250, -1000, -800, -640, -500, -400, -320, -288, -250, -240, -200, -160, -144, -125, -120, -100, -96, -80, -60, -50, -48, -40, -30, -25, -20, -
-                    15, -13, -10, -8, -6, -5, -4, -3, 0.4, 0.5, 0.6, 0.8, 1, 1.1, 1.2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 15, 20, 25, 30, 40, 50, 60, 75, 100, 112, 120, 150, 200, 220, 230, 239, 435]
+        shutters = [
+            -2000, -1600, -1250, -1000, -800, -640, -500, -400, -320, -288, -250, -240, -200, -160, -144, -125, -120, -
+            100, -96, -80, -60, -50, -48, -40, -30, -25, -20, -15, -13, -10, -8, -6, -5, -4, -3, 0.4, 0.5, 0.6, 0.8, 1,
+            1.1, 1.2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 15, 20, 25, 30, 40, 50, 60, 75, 100, 112, 120, 150, 200, 220, 230,
+            239, 435]
         meters = ['centre', 'spot', 'average']
         awbs = ['off', 'auto', 'incandescent', 'tungsten',
                 'fluorescent', 'indoor', 'daylight', 'cloudy']
@@ -463,6 +494,9 @@ class RaspberryPi:
         Requests for a series of commands and the path from the Algo API.
         The received commands and path are then queued in the respective queues
         """
+        API_IP = self.config['api']['ip']
+        API_PORT = self.config['api']['port']
+
         self.logger.info("Requesting path from algo...")
         self.android_queue.put(AndroidMessage(
             "info", "Requesting path from algo..."))
@@ -502,6 +536,9 @@ class RaspberryPi:
 
     def request_stitch(self):
         """Sends a stitch request to the image recognition API to stitch the different images together"""
+        API_IP = self.config['api']['ip']
+        API_PORT = self.config['api']['port']
+
         url = f"http://{API_IP}:{API_PORT}/stitch"
         response = requests.get(url)
 
@@ -530,6 +567,9 @@ class RaspberryPi:
         Returns:
             bool: True if running, False if not.
         """
+        API_IP = self.config['api']['ip']
+        API_PORT = self.config['api']['port']
+
         # Check image recognition API
         url = f"http://{API_IP}:{API_PORT}/status"
         try:

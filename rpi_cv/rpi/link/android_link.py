@@ -7,7 +7,7 @@ from message.android import AndroidMessage
 
 
 class AndroidLink(Link):
-    """Class for communicating with Android tablet over Bluetooth connection. 
+    """Class for communicating with Android tablet over Bluetooth connection.
 
     ## General Format
     Messages between the Android app and Raspi will be in the following format:
@@ -22,7 +22,7 @@ class AndroidLink(Link):
     - `image-rec`: image recognition results
     - `mode`: the current mode of the robot (`manual` or `path`)
     - `status`: status updates of the robot (`running` or `finished`)
-    - `obstacle`: list of obstacles 
+    - `obstacle`: list of obstacles
 
     ## Android to RPi
 

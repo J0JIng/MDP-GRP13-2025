@@ -59,7 +59,7 @@ def prepare_logger(
 
     # Build format strings once (same for all handlers)
     if clickable_paths:
-        pattern = "%(leveltext)s :: %(name)s.%(funcName)s :: %(message)s :: %(pathname)s:%(lineno)d:"
+        pattern = "%(asctime)s :: %(leveltext)s :: %(name)s.%(funcName)s :: %(message)s :: %(pathname)s:%(lineno)d:"
     else:
         pattern = "%(asctime)s :: %(leveltext)s :: %(name)s.%(funcName)s :: %(message)s"
 

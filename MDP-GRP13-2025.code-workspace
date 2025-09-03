@@ -16,5 +16,7 @@
 			"path": "stm"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"powershell.cwd": "rpi"
+	}
 }
