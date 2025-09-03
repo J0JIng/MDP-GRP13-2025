@@ -117,8 +117,10 @@ class AndroidLink(Link):
         try:
             self.logger.info("Disconnecting Bluetooth link")
             if self.server_sock:
+                # self.server_sock.shutdown(bluetooth.SHUT_RDWR) # Not sure why this appears in the reference code, shutdown is not a method as of pybluez 0.30
                 self.server_sock.close()
             if self.client_sock:
+                # self.client_sock.shutdown(bluetooth.SHUT_RDWR) # Not sure why this appears in the reference code, shutdown is not a method as of pybluez 0.30
                 self.client_sock.close()
             self.client_sock = None
             self.server_sock = None

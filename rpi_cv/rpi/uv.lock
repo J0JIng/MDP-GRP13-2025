@@ -94,53 +94,9 @@ wheels = [
 ]
 
 [[package]]
-name = "pybluez2"
-version = "0.42"
-source = { path = "vendor/pybluez2-0.42-cp39-cp39-linux_armv7l.whl" }
-resolution-markers = [
-    "platform_machine == 'armv7l' and sys_platform == 'linux'",
-]
-wheels = [
-    { filename = "pybluez2-0.42-cp39-cp39-linux_armv7l.whl", hash = "sha256:076e9bfe0a03568f01aa49e0847726ab3e363e1287ba88c0131282128d7e1a33" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "gattlib", marker = "extra == 'ble'" }]
-provides-extras = ["ble"]
-
-[[package]]
-name = "pybluez2"
-version = "0.42"
-source = { path = "vendor/pybluez2-0.42-cp39-cp39-win_amd64.whl" }
-resolution-markers = [
-    "platform_machine == 'AMD64' and sys_platform == 'win32'",
-]
-wheels = [
-    { filename = "pybluez2-0.42-cp39-cp39-win_amd64.whl", hash = "sha256:8be22a2f085d831f246acd8ccecd67256bbd8c4af857d183efb89b72d4db56d8" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "gattlib", marker = "extra == 'ble'" }]
-provides-extras = ["ble"]
-
-[[package]]
-name = "pybluez2"
-version = "0.46"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "(platform_machine != 'armv7l' and sys_platform == 'linux') or (platform_machine != 'AMD64' and sys_platform == 'win32') or (sys_platform != 'linux' and sys_platform != 'win32')",
-]
-dependencies = [
-    { name = "pyobjc-core", marker = "(platform_machine != 'armv7l' and sys_platform == 'linux') or (platform_machine != 'AMD64' and sys_platform == 'win32') or (sys_platform != 'linux' and sys_platform != 'win32')" },
-    { name = "pyobjc-framework-cocoa", marker = "(platform_machine != 'armv7l' and sys_platform == 'linux') or (platform_machine != 'AMD64' and sys_platform == 'win32') or (sys_platform != 'linux' and sys_platform != 'win32')" },
-    { name = "pyobjc-framework-libdispatch", marker = "(platform_machine != 'armv7l' and sys_platform == 'linux') or (platform_machine != 'AMD64' and sys_platform == 'win32') or (sys_platform != 'linux' and sys_platform != 'win32')" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/dd/f9/980b70642ba99f1cc8cdc9042ad1bb68355bcf5bc68c892ced3bc3360e72/pybluez2-0.46.tar.gz", hash = "sha256:fffca90bd9a6329f01772c2ae66ead2b6b6dbf3daed7670890f6b8b462ab72a5", size = 50306, upload-time = "2022-08-13T16:53:51.635Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2b/ad/0da8b2c4942e3f0c76db9895b660427094da4e5d57e09e559270fb64f1e7/pybluez2-0.46-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:88250fb4c113deb93f8c57884eb1ebe8feb9763d1477e3a3636585bfb6465bac", size = 31856, upload-time = "2022-08-13T16:53:46.821Z" },
-    { url = "https://files.pythonhosted.org/packages/60/ba/f390911a84ede63e90fd128402f67fd21c899b28a10b327bb6594b1494cc/pybluez2-0.46-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4c68f0bfb7fe9b3766b23a0893635ee5b254ac50ef337a9bd3cd6db42358ce22", size = 189938, upload-time = "2022-08-13T16:53:48.453Z" },
-    { url = "https://files.pythonhosted.org/packages/ea/dd/61b5191fb6516cd7476f258d507d0eedec02192c86653324d6789079700f/pybluez2-0.46-cp39-cp39-win_amd64.whl", hash = "sha256:cd95e51063e7dab613f95f28f6ce5a811cf1b9d508c9f88c9cf1298c457783dc", size = 33100, upload-time = "2022-08-13T16:53:49.885Z" },
-]
+name = "pybluez"
+version = "0.30"
+source = { git = "https://github.com/pybluez/pybluez.git#82cbba8a1ebd4c1e3442dfafd8581d58c50fa39e" }
 
 [[package]]
 name = "pygments"
@@ -149,39 +105,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b0/77/a5b8c569bf593b0140bde72ea885a803b82086995367bf2037de0159d924/pygments-2.19.2.tar.gz", hash = "sha256:636cb2477cec7f8952536970bc533bc43743542f70392ae026374600add5b887", size = 4968631, upload-time = "2025-06-21T13:39:12.283Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c7/21/705964c7812476f378728bdf590ca4b771ec72385c533964653c68e86bdc/pygments-2.19.2-py3-none-any.whl", hash = "sha256:86540386c03d588bb81d44bc3928634ff26449851e99741617ecb9037ee5ec0b", size = 1225217, upload-time = "2025-06-21T13:39:07.939Z" },
-]
-
-[[package]]
-name = "pyobjc-core"
-version = "9.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/48/d9/a13566ce8914746557b9e8637a5abe1caae86ed202b0fb072029626b8bb1/pyobjc-core-9.2.tar.gz", hash = "sha256:d734b9291fec91ff4e3ae38b9c6839debf02b79c07314476e87da8e90b2c68c3", size = 923758, upload-time = "2023-06-07T08:33:03.348Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/35/5e/6d130b175bb4d4635a0e434e7d05be019841ac11c63e9be7eb3c25029346/pyobjc_core-9.2-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:b9809cf96678797acb72a758f34932fe8e2602d5ab7abec15c5ac68ddb481720", size = 737102, upload-time = "2023-06-07T07:38:44.989Z" },
-]
-
-[[package]]
-name = "pyobjc-framework-cocoa"
-version = "9.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pyobjc-core", marker = "(platform_machine != 'armv7l' and sys_platform == 'linux') or (platform_machine != 'AMD64' and sys_platform == 'win32') or (sys_platform != 'linux' and sys_platform != 'win32')" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/38/91/c54fdffda6d7cfad67ff617f19001163658d50bc72376d1584e691cf4895/pyobjc-framework-Cocoa-9.2.tar.gz", hash = "sha256:efd78080872d8c8de6c2b97e0e4eac99d6203a5d1637aa135d071d464eb2db53", size = 6170134, upload-time = "2023-06-07T09:14:13.129Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/64/09/d0eb252549b3009f008c8415c9739a9c726ddfec9adc1aa92b6a8dec0efe/pyobjc_framework_Cocoa-9.2-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:b236bb965e41aeb2e215d4e98a5a230d4b63252c6d26e00924ea2e69540a59d6", size = 390462, upload-time = "2023-06-07T07:56:15.425Z" },
-]
-
-[[package]]
-name = "pyobjc-framework-libdispatch"
-version = "9.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pyobjc-core", marker = "(platform_machine != 'armv7l' and sys_platform == 'linux') or (platform_machine != 'AMD64' and sys_platform == 'win32') or (sys_platform != 'linux' and sys_platform != 'win32')" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f1/73/455a8b92d3fc5b47b22e8055b6df19be96b2aa13715676e70a9cb7ed00b2/pyobjc-framework-libdispatch-9.2.tar.gz", hash = "sha256:542e7f7c2b041939db5ed6f3119c1d67d73ec14a996278b92485f8513039c168", size = 37690, upload-time = "2023-06-07T10:17:49.413Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/08/50cbaaf7d19da3b0c7969ec6b128848fd6614fd9ef42b29d976fa6b317dd/pyobjc_framework_libdispatch-9.2-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:83cdb672acf722717b5ecf004768f215f02ac02d7f7f2a9703da6e921ab02222", size = 20928, upload-time = "2023-06-07T08:28:34.713Z" },
 ]
 
 [[package]]
@@ -248,9 +171,7 @@ name = "rpi"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "pybluez2", version = "0.42", source = { path = "vendor/pybluez2-0.42-cp39-cp39-linux_armv7l.whl" }, marker = "platform_machine == 'armv7l' and sys_platform == 'linux'" },
-    { name = "pybluez2", version = "0.42", source = { path = "vendor/pybluez2-0.42-cp39-cp39-win_amd64.whl" }, marker = "platform_machine == 'AMD64' and sys_platform == 'win32'" },
-    { name = "pybluez2", version = "0.46", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'armv7l' and sys_platform == 'linux') or (platform_machine != 'AMD64' and sys_platform == 'win32') or (sys_platform != 'linux' and sys_platform != 'win32')" },
+    { name = "pybluez" },
     { name = "pyserial" },
     { name = "pyyaml" },
     { name = "requests" },
@@ -263,9 +184,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "pybluez2", marker = "(platform_machine != 'armv7l' and sys_platform == 'linux') or (platform_machine != 'AMD64' and sys_platform == 'win32') or (sys_platform != 'linux' and sys_platform != 'win32')", specifier = "==0.46" },
-    { name = "pybluez2", marker = "platform_machine == 'armv7l' and sys_platform == 'linux'", path = "vendor/pybluez2-0.42-cp39-cp39-linux_armv7l.whl" },
-    { name = "pybluez2", marker = "platform_machine == 'AMD64' and sys_platform == 'win32'", path = "vendor/pybluez2-0.42-cp39-cp39-win_amd64.whl" },
+    { name = "pybluez", git = "https://github.com/pybluez/pybluez.git" },
     { name = "pyserial", specifier = ">=3.5" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "requests", specifier = ">=2.32.5" },
