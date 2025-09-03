@@ -4,7 +4,6 @@ from link.stm32_link import STMLink
 
 def main():
     android_link = AndroidLink()
-
     stm_link = STMLink()
 
 
