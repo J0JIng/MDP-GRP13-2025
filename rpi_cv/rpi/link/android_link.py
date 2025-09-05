@@ -110,7 +110,7 @@ class AndroidLink(Link):
                 self.client_sock.close()
             if self.server_sock:
                 self.server_sock.close()
-            raise
+            raise e
 
     def disconnect(self):
         """Disconnect and close sockets."""
@@ -140,7 +140,10 @@ class AndroidLink(Link):
                 self.logger.debug("Sent to Android: %s", message.jsonify)
             except OSError as e:
                 self.logger.error("Error sending message to Android: %s", e)
-                raise
+                raise e
+            except Exception as e:
+                self.logger.error("Unexpected error sending message to Android: %s", e)
+                raise e
         else:
             self.logger.warning("Bluetooth client socket not available")
 
@@ -150,7 +153,8 @@ class AndroidLink(Link):
             self.logger.warning("Bluetooth client socket not available")
             return None
 
-        bufsize = int(self.config["bluetooth"].get("recv_bufsize", 1024))
+        # bufsize = int(self.config["bluetooth"].get("recv_bufsize", 1024))
+        bufsize = self.config["bluetooth"].get("recv_bufsize", 1024)
         try:
             tmp = self.client_sock.recv(bufsize)
             self.logger.debug("Raw recv bytes: %r", tmp)
@@ -159,4 +163,7 @@ class AndroidLink(Link):
             return message
         except OSError as e:
             self.logger.error("Error receiving message from Android: %s", e)
-            raise
+            raise e
+        except Exception as e:
+            self.logger.error("Unexpected error receiving message from Android: %s", e)
+            raise e

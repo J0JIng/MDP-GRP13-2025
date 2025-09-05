@@ -11,6 +11,7 @@ def main():
 
     msg = AndroidMessage(cat="info", value="Hello from RPi!")
     android_link.send(msg)
+    android_link.disconnect()
     sleep(30)
 
     # stm_link = STMLink()
