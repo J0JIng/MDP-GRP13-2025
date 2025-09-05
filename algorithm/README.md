@@ -9,5 +9,5 @@ Run the sample data by:
 
 ```bash
 cd MDP-GRP13-2025
-python -m algorithm.algo
+python -m algorithm.main
 ```

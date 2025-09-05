@@ -431,48 +431,50 @@ class MazeSolver:
             for j in range(i + 1, len(states)):
                 astar_search(states[i], states[j])
 
-##if __name__ == "__main__":
-    ##pass
-
 if __name__ == "__main__":
-    # --- Minimal smoke test for MazeSolver (no hardware, no camera) ---
+    pass
 
-    # 1) Create a 15x10 grid, robot at (1,1) facing NORTH
-    ms = MazeSolver(size_x=15, size_y=10, robot_x=1, robot_y=1, robot_direction=Direction.NORTH)
 
-    # 2) Add a couple of obstacles (x, y, facing, id)
-    ms.add_obstacle(5, 2, Direction.SOUTH, obstacle_id=1)
-    ms.add_obstacle(10, 6, Direction.WEST, obstacle_id=2)
+# ## test_algo 
+# ## if __name__ == "__main__":
+#     # --- Minimal smoke test for MazeSolver (no hardware, no camera) ---
 
-    # 3) Monkeypatch: pretend these are valid viewing cells for each obstacle
-    #    (You’re bypassing entities.Grid.get_view_obstacle_positions to test the planner.)
-    from types import MethodType
-    def fake_view_positions(self, retrying):
-        # one list per obstacle; inside each list are candidate CellStates
-        return [
-            [CellState(3, 2, Direction.EAST), CellState(4, 1, Direction.EAST)],  # for obstacle 1
-            [CellState(9, 6, Direction.NORTH), CellState(11, 7, Direction.NORTH)]  # for obstacle 2
-        ]
-    ms.grid.get_view_obstacle_positions = MethodType(fake_view_positions, ms.grid)
+#     # 1) Create a 15x10 grid, robot at (1,1) facing NORTH
+#     ms = MazeSolver(size_x=15, size_y=10, robot_x=1, robot_y=1, robot_direction=Direction.NORTH)
 
-    # (Optional) give each candidate a small "penalty" field if your CellState supports it
-    for vp in ms.grid.get_view_obstacle_positions(False):
-        for cs in vp:
-            # If CellState has no 'penalty' attr by default, add it dynamically
-            if not hasattr(cs, "penalty"):
-                cs.penalty = 0
-            # and a screenshot id placeholder
-            if not hasattr(cs, "screenshot_id"):
-                cs.screenshot_id = None
+#     # 2) Add a couple of obstacles (x, y, facing, id)
+#     ms.add_obstacle(5, 2, Direction.SOUTH, obstacle_id=1)
+#     ms.add_obstacle(10, 6, Direction.WEST, obstacle_id=2)
 
-    # 4) Plan
-    path, total_cost = ms.get_optimal_order_dp(retrying=False)
+#     # 3) Monkeypatch: pretend these are valid viewing cells for each obstacle
+#     #    (You’re bypassing entities.Grid.get_view_obstacle_positions to test the planner.)
+#     from types import MethodType
+#     def fake_view_positions(self, retrying):
+#         # one list per obstacle; inside each list are candidate CellStates
+#         return [
+#             [CellState(3, 2, Direction.EAST), CellState(4, 1, Direction.EAST)],  # for obstacle 1
+#             [CellState(9, 6, Direction.NORTH), CellState(11, 7, Direction.NORTH)]  # for obstacle 2
+#         ]
+#     ms.grid.get_view_obstacle_positions = MethodType(fake_view_positions, ms.grid)
 
-    # 5) Print results
-    print(f"\n=== Planned path has {len(path)} states; total cost = {total_cost:.2f}")
-    if path:
-        print("First 10 states:")
-        for st in path[:10]:
-            print(f"({st.x},{st.y}) dir={st.direction}")
-    else:
-        print("No path found (check reachability/turn constraints).")
+#     # (Optional) give each candidate a small "penalty" field if your CellState supports it
+#     for vp in ms.grid.get_view_obstacle_positions(False):
+#         for cs in vp:
+#             # If CellState has no 'penalty' attr by default, add it dynamically
+#             if not hasattr(cs, "penalty"):
+#                 cs.penalty = 0
+#             # and a screenshot id placeholder
+#             if not hasattr(cs, "screenshot_id"):
+#                 cs.screenshot_id = None
+
+#     # 4) Plan
+#     path, total_cost = ms.get_optimal_order_dp(retrying=False)
+
+#     # 5) Print results
+#     print(f"\n=== Planned path has {len(path)} states; total cost = {total_cost:.2f}")
+#     if path:
+#         print("First 10 states:")
+#         for st in path[:10]:
+#             print(f"({st.x},{st.y}) dir={st.direction}")
+#     else:
+#         print("No path found (check reachability/turn constraints).")
