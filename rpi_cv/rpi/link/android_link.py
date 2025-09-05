@@ -1,6 +1,7 @@
 import os
 from typing import Optional
 import bluetooth
+from pydbus import SystemBus
 from config.load_config import load_bt_config
 from link.base import Link
 from message.android import AndroidMessage
@@ -72,17 +73,44 @@ class AndroidLink(Link):
         self.server_sock = None
         self.config = load_bt_config()
 
+    def __set_adapter_state(self, adapter="hci0", *, powered=True, pairable=True, discoverable=True,
+                            discoverable_timeout=180, alias=None):
+        bus = SystemBus()
+        mngr = bus.get("org.bluez", "/")
+        objects = mngr.GetManagedObjects()
+
+        adapter_path = None
+        for path, ifaces in objects.items():
+            if "org.bluez.Adapter1" in ifaces and path.endswith(adapter):
+                adapter_path = path
+                break
+        if not adapter_path:
+            raise RuntimeError(f"Adapter {adapter} not found")
+
+        adapter_obj = bus.get("org.bluez", adapter_path)
+
+        # Set properties (order matters a bit)
+        adapter_obj.Powered = powered
+        if alias is not None:
+            adapter_obj.Alias = alias
+        adapter_obj.Pairable = pairable
+        adapter_obj.DiscoverableTimeout = discoverable_timeout  # 0 = never auto-off
+        adapter_obj.Discoverable = discoverable
+
     def connect(self):
         """Start Bluetooth server and wait for Android to connect."""
         bt = self.config["bluetooth"]
         adapter = bt["adapter"]
-        discoverable_cmd = bt["discoverable_cmd"].format(adapter=adapter)
+        # discoverable_cmd = bt["discoverable_cmd"].format(adapter=adapter)
         service_name = bt["service_name"]
         uuid = bt["resolved_uuid"]
         backlog = int(bt["backlog"])
 
         self.logger.info("Bluetooth connection starting (adapter=%s, service=%s)", adapter, service_name)
-        os.system(discoverable_cmd)
+        # os.system(discoverable_cmd)
+
+        self.__set_adapter_state(adapter=adapter, powered=True, pairable=True, discoverable=True,
+                                 discoverable_timeout=180, alias=service_name)
 
         try:
             self.server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
