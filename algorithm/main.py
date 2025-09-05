@@ -1,14 +1,16 @@
 import time
-from algorithm.algo import MazeSolver
+from algo import MazeSolver
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-##from model import * (cv)
-from algorithm.helper import command_generator
+# from model import * (cv)
+from helper import command_generator
 
 app = Flask(__name__)
 CORS(app)
-#model = load_model()
+# model = load_model()
 model = None
+
+
 @app.route('/status', methods=['GET'])
 def status():
     """
@@ -46,7 +48,7 @@ def path_finding():
     optimal_path, distance = maze_solver.get_optimal_order_dp(retrying=retrying)
     print(f"Time taken to find shortest path using A* search: {time.time() - start}s")
     print(f"Distance to travel: {distance} units")
-    
+
     # Based on the shortest path, generate commands for the robot
     commands = command_generator(optimal_path, obstacles)
 
@@ -89,11 +91,11 @@ def path_finding():
 #     constituents = file.filename.split("_")
 #     obstacle_id = constituents[1]
 
-#     ## Week 8 ## 
+#     ## Week 8 ##
 #     #signal = constituents[2].strip(".jpg")
 #     #image_id = predict_image(filename, model, signal)
 
-#     ## Week 9 ## 
+#     ## Week 9 ##
 #     # We don't need to pass in the signal anymore
 #     #image_id = predict_image_week_9(filename,model)
 

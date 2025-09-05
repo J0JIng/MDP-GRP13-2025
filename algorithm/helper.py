@@ -1,4 +1,4 @@
-from .consts import WIDTH, HEIGHT, Direction
+from consts import WIDTH, HEIGHT, Direction
 
 
 def is_valid(center_x: int, center_y: int):
@@ -19,7 +19,7 @@ def is_valid(center_x: int, center_y: int):
 def command_generator(states, obstacles):
     """
     This function takes in a list of states and generates a list of commands for the robot to follow
-    
+
     Inputs
     ------
     states: list of State objects
@@ -32,7 +32,7 @@ def command_generator(states, obstacles):
 
     # Convert the list of obstacles into a dictionary with key as the obstacle id and value as the obstacle
     obstacles_dict = {ob['id']: ob for ob in obstacles}
-    
+
     # Initialize commands list
     commands = []
 
@@ -60,8 +60,8 @@ def command_generator(states, obstacles):
                 # SOUTH = 4
                 # WEST = 6
 
-                current_ob_dict = obstacles_dict[states[i].screenshot_id] # {'x': 9, 'y': 10, 'd': 6, 'id': 9}
-                current_robot_position = states[i] # {'x': 1, 'y': 8, 'd': <Direction.NORTH: 0>, 's': -1}
+                current_ob_dict = obstacles_dict[states[i].screenshot_id]  # {'x': 9, 'y': 10, 'd': 6, 'id': 9}
+                current_robot_position = states[i]  # {'x': 1, 'y': 8, 'd': <Direction.NORTH: 0>, 's': -1}
 
                 # Obstacle facing WEST, robot facing EAST
                 if current_ob_dict['d'] == 6 and current_robot_position.direction == 2:
@@ -73,7 +73,7 @@ def command_generator(states, obstacles):
                         commands.append(f"SNAP{states[i].screenshot_id}_R")
                     else:
                         commands.append(f"SNAP{states[i].screenshot_id}")
-                
+
                 # Obstacle facing EAST, robot facing WEST
                 elif current_ob_dict['d'] == 2 and current_robot_position.direction == 6:
                     if current_ob_dict['y'] > current_robot_position.y:
@@ -182,14 +182,14 @@ def command_generator(states, obstacles):
             raise Exception("Invalid position")
 
         # If any of these states has a valid screenshot ID, then add a SNAP command as well to take a picture
-        if states[i].screenshot_id != -1:  
+        if states[i].screenshot_id != -1:
             # NORTH = 0
             # EAST = 2
             # SOUTH = 4
             # WEST = 6
 
-            current_ob_dict = obstacles_dict[states[i].screenshot_id] # {'x': 9, 'y': 10, 'd': 6, 'id': 9}
-            current_robot_position = states[i] # {'x': 1, 'y': 8, 'd': <Direction.NORTH: 0>, 's': -1}
+            current_ob_dict = obstacles_dict[states[i].screenshot_id]  # {'x': 9, 'y': 10, 'd': 6, 'id': 9}
+            current_robot_position = states[i]  # {'x': 1, 'y': 8, 'd': <Direction.NORTH: 0>, 's': -1}
 
             # Obstacle facing WEST, robot facing EAST
             if current_ob_dict['d'] == 6 and current_robot_position.direction == 2:
@@ -201,7 +201,7 @@ def command_generator(states, obstacles):
                     commands.append(f"SNAP{states[i].screenshot_id}_R")
                 else:
                     commands.append(f"SNAP{states[i].screenshot_id}")
-            
+
             # Obstacle facing EAST, robot facing WEST
             elif current_ob_dict['d'] == 2 and current_robot_position.direction == 6:
                 if current_ob_dict['y'] > current_robot_position.y:
@@ -236,7 +236,7 @@ def command_generator(states, obstacles):
                     commands.append(f"SNAP{states[i].screenshot_id}")
 
     # Final command is the stop command (FIN)
-    commands.append("FIN")  
+    commands.append("FIN")
 
     # Compress commands if there are consecutive forward or backward commands
     compressed_commands = [commands[0]]
@@ -259,7 +259,7 @@ def command_generator(states, obstacles):
             if steps != 90:
                 compressed_commands[-1] = "FW{}".format(steps + 10)
                 continue
-        
+
         # Otherwise, just add as usual
         compressed_commands.append(commands[i])
 

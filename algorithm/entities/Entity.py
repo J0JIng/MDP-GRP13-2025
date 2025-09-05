@@ -1,6 +1,6 @@
 from typing import List
-from ..consts import Direction, EXPANDED_CELL, SCREENSHOT_COST
-from algorithm.helper import is_valid
+from consts import Direction, EXPANDED_CELL, SCREENSHOT_COST
+from helper import is_valid
 
 
 class CellState:
@@ -285,6 +285,7 @@ class Grid:
     """
     Grid object that contains the size of the grid and a list of obstacles
     """
+
     def __init__(self, size_x: int, size_y: int):
         """
         Args:
@@ -335,7 +336,7 @@ class Grid:
         Returns:
             bool: _description_
         """
-        
+
         if not self.is_valid_coord(x, y):
             return False
 
