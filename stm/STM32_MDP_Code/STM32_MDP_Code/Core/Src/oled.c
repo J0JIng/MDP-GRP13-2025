@@ -1,6 +1,7 @@
 #include <oled.h>
 #include <oledfont.h>
 #include "stdlib.h"
+#include "stdbool.h"
 
 void OLED_WR_Byte(uint8_t dat,uint8_t DataCmd)
 {
@@ -153,6 +154,54 @@ void OLED_ShowString(uint8_t x,uint8_t y,const uint8_t *p)
         p++;
     }  
 }	 
+/**************************************************************************
+Show The Shape
+**************************************************************************/
+void OLED_DrawRect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, bool color) {
+    // Draw horizontal lines
+    for (uint8_t x = x1; x <= x2; x++) {
+        OLED_DrawPoint(x, y1, color); // Draw top border
+        OLED_DrawPoint(x, y2, color); // Draw bottom border
+    }
+
+    // Draw vertical lines
+    for (uint8_t y = y1; y <= y2; y++) {
+        OLED_DrawPoint(x1, y, color); // Draw left border
+        OLED_DrawPoint(x2, y, color); // Draw right border
+    }
+}
+
+void OLED_DrawRectWithFill(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, bool color) {
+    // Draw borders
+    for (uint8_t x = x1; x <= x2; x++) {
+        OLED_DrawPoint(x, y1, color); // Draw top border
+        OLED_DrawPoint(x, y2, color); // Draw bottom border
+    }
+
+    for (uint8_t y = y1; y <= y2; y++) {
+        OLED_DrawPoint(x1, y, color); // Draw left border
+        OLED_DrawPoint(x2, y, color); // Draw right border
+    }
+
+    // Fill the interior
+    for (uint8_t y = y1 + 1; y < y2; y++) {
+        for (uint8_t x = x1 + 1; x < x2; x++) {
+            OLED_DrawPoint(x, y, color); // Draw points within the rectangle
+        }
+    }
+}
+
+void OLED_DrawHorizontalLine(uint8_t x, uint8_t y, uint8_t length) {
+    for (uint8_t i = x; i < x + length; i++) {
+        OLED_DrawPoint(i, y, 1);
+    }
+}
+
+void OLED_DrawVerticalLine(uint8_t x, uint8_t y, uint8_t length) {
+    for (uint8_t i = y; i < y + length; i++) {
+        OLED_DrawPoint(x, i, 1);
+    }
+}
 
 void OLED_Init(void)
 {

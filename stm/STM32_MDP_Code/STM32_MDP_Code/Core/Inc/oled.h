@@ -1,16 +1,12 @@
-/*
- * oled.h
- *
- *  Created on: Jan 22, 2022
- *      Author: yrloke
- */
-
 #ifndef INC_OLED_H_
 #define INC_OLED_H_
 
-//#include "sys.h"
-//#include "system.h"
 #include "stm32f4xx_hal.h"
+#include "stdbool.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 //-----------------OLED Definition----------------
 
@@ -36,15 +32,11 @@
 #define OLED_SDIN_Clr()  HAL_GPIO_WritePin(GPIOD,OLED_SDA_Pin,GPIO_PIN_RESET)    //SDA
 #define OLED_SDIN_Set()  HAL_GPIO_WritePin(GPIOD,OLED_SDA_Pin,GPIO_PIN_SET)    //SDA
 
-
-
 #define OLED_CMD  0	//Write Command
 #define OLED_DATA 1	//Write Data
 
-
-
 //OLED Control Functions
-void OLED_WR_Byte(uint8_t dat,uint8_t cmd);  // to be implemented
+void OLED_WR_Byte(uint8_t dat,uint8_t cmd);
 void OLED_Display_On(void);
 void OLED_Display_Off(void);
 void OLED_Refresh_Gram(void);
@@ -55,5 +47,15 @@ void OLED_ShowChar(uint8_t x,uint8_t y,uint8_t chr,uint8_t size,uint8_t mode);
 void OLED_ShowNumber(uint8_t x,uint8_t y,uint32_t num,uint8_t len,uint8_t size);
 void OLED_ShowString(uint8_t x,uint8_t y,const uint8_t *p);
 void OLED_Set_Pos(unsigned char x, unsigned char y);
+void OLED_DrawRect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, bool color);
+void OLED_DrawRectWithFill(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, bool color);
+void OLED_DrawLine(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);
+void OLED_DrawHorizontalLine(uint8_t x, uint8_t y, uint8_t length);
+void OLED_DrawVerticalLine(uint8_t x, uint8_t y, uint8_t length);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_OLED_H_ */
+
