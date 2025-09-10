@@ -9,3 +9,4 @@ bluetooth:
   backlog: 1 # listen() backlog
   recv_bufsize: 1024 # bytes per recv() call
   newline_delimited: true # append '\n' when sending JSON
+  msg_log_max_size: 150 # this is in characters
