@@ -1,0 +1,14 @@
+../Core/Src/main.c:714:6:StartDefaultTask	1
+../Core/Src/main.c:177:6:SystemClock_Config	3
+../Core/Src/main.c:91:5:main	25
+../Core/Src/main.c:626:6:HAL_GPIO_EXTI_Callback	1
+../Core/Src/main.c:633:6:MotorDrive_enable	1
+../Core/Src/main.c:641:6:Motor_direction	1
+../Core/Src/main.c:652:6:Motor_stop	1
+../Core/Src/main.c:660:6:Motor_forward	1
+../Core/Src/main.c:671:6:Motor_reverse	1
+../Core/Src/main.c:682:6:ServoMotor_enable	1
+../Core/Src/main.c:689:6:ServoMotor_TurnRight	1
+../Core/Src/main.c:694:6:ServoMotor_TurnLeft	1
+../Core/Src/main.c:699:6:ServoMotor_TurnCenter	1
+../Core/Src/main.c:730:6:Error_Handler	1
