@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "algorithm"
+		},
+		{
+			"path": "android"
+		},
+		{
+			"path": "rpi_cv/rpi"
+		},
+		{
+			"path": "stm"
+		}
+	],
+	"settings": {
+		"powershell.cwd": "rpi"
+	}
+}

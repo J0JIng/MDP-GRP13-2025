@@ -1,0 +1,484 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/backgroundColor"
+    tools:context=".ui.home.HomeFragment">
+
+    <LinearLayout
+        android:id="@+id/rootColumn"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingTop="30dp">
+
+        <!-- Top bar -->
+        <LinearLayout
+            android:id="@+id/topBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="20dp"
+            android:paddingRight="20dp"
+            android:paddingBottom="0dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/textView_bluetooth"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/bluetooth_device_connected_not"
+                android:textSize="16sp"
+                android:fontFamily="@font/urbanist_semibold"
+                android:textColor="@color/bluetooth_status_color"/>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"/>
+
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="50dp"
+                android:layout_weight="2"
+                android:background="@drawable/seg_track_teal"
+                android:padding="4dp">
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/taskTypeGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    app:singleSelection="true"
+                    app:selectionRequired="true"
+                    app:checkedButton="@+id/btn_image_rec">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_image_rec"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:paddingHorizontal="10dp"
+                        android:text="@string/button_imagerec"
+                        android:textAllCaps="false"
+                        android:singleLine="false"
+                        android:lines="2"
+                        android:maxLines="2"
+                        android:ellipsize="none"
+                        android:gravity="center"
+                        android:textAlignment="center"
+                        android:includeFontPadding="false"
+                        android:textSize="14sp"
+                        app:cornerRadius="20dp"
+                        app:strokeWidth="0dp"
+                        app:rippleColor="@android:color/transparent"
+                        app:backgroundTint="@color/seg_btn_bg_teal"
+                        android:textColor="@color/seg_btn_text_teal"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_fastest_car"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:paddingHorizontal="10dp"
+                        android:text="@string/button_fastest"
+                        android:textAllCaps="false"
+                        android:singleLine="false"
+                        android:lines="2"
+                        android:maxLines="2"
+                        android:ellipsize="none"
+                        android:gravity="center"
+                        android:textAlignment="center"
+                        android:includeFontPadding="false"
+                        android:textSize="14sp"
+                        app:cornerRadius="20dp"
+                        app:strokeWidth="0dp"
+                        app:rippleColor="@android:color/transparent"
+                        app:backgroundTint="@color/seg_btn_bg_teal"
+                        android:textColor="@color/seg_btn_text_teal"/>
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- Hidden legacy ToggleButton to preserve logic -->
+        <ToggleButton
+            android:id="@+id/button_taskType"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:visibility="gone"
+            android:textOff="@string/button_imagerec"
+            android:textOn="@string/button_fastest"/>
+
+        <!-- Map + right controls panel -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.example.mdp_android.ui.grid.Map
+                android:id="@+id/mapView"
+                android:layout_width="450dp"
+                android:layout_height="450dp"
+                android:layout_marginLeft="20dp"
+                android:layout_marginTop="30dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:layout_marginRight="25dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/textView_obstacleTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="10dp"
+                    android:fontFamily="@font/urbanist_semibold"
+                    android:text="@string/text_obstacleTitle"
+                    android:textColor="@color/black"
+                    android:textSize="17sp" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerView_obsList"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Bottom control cluster + left info column -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/bottomArea"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <!-- Bottom-left info column -->
+            <LinearLayout
+                android:id="@+id/left_info_column"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginStart="16dp"
+                android:layout_marginBottom="10dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent">
+
+                <!-- Status -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="190dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    app:cardCornerRadius="10dp"
+                    app:cardUseCompatPadding="true"
+                    app:cardBackgroundColor="@color/pink">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/textView_StatusTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/urbanist_bolditalic"
+                            android:padding="10dp"
+                            android:text="@string/text_StatusTitle"
+                            android:textColor="@color/black"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/textView_Status"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/urbanist_semibold"
+                            android:padding="10dp"
+                            android:text="@string/text_Status"
+                            android:textColor="@color/black"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+
+                <!-- Robot Movement -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="190dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    app:cardCornerRadius="10dp"
+                    app:cardUseCompatPadding="true"
+                    app:cardBackgroundColor="@color/pink">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/textView_robotStatusTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/urbanist_bolditalic"
+                            android:padding="10dp"
+                            android:text="@string/text_robotStatusTitle"
+                            android:textColor="@color/black"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/textView_robotStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/urbanist_semibold"
+                            android:padding="8dp"
+                            android:text="@string/text_robotStart"
+                            android:textColor="@color/black"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+
+
+                <!-- Target Captured -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="190dp"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="10dp"
+                    app:cardUseCompatPadding="true"
+                    app:cardBackgroundColor="@color/pink">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/textView_targetCoorTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/urbanist_bolditalic"
+                            android:padding="10dp"
+                            android:text="@string/text_targetCoorTitle"
+                            android:textColor="@color/black"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/textView_targetCoor"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/urbanist_semibold"
+                            android:padding="10dp"
+                            android:text="@string/text_targetCoor"
+                            android:textColor="@color/black"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+            </LinearLayout>
+
+
+
+            <!-- Bottom center actions -->
+            <LinearLayout
+                android:id="@+id/bottomActions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginLeft="10dp"
+                android:layout_marginBottom="32dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.5">
+
+                <Button
+                    android:id="@+id/button_add_obstacle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/rounded_button"
+                    android:backgroundTint="@color/teal_dark"
+                    android:fontFamily="@font/urbanist_semibold"
+                    android:text="Add/Edit Obstacle" />
+
+                <Button
+                    android:id="@+id/button_reset"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/rounded_button"
+                    android:backgroundTint="@color/teal_dark"
+                    android:fontFamily="@font/urbanist_semibold"
+                    android:text="@string/text_reset" />
+
+                <Spinner
+                    android:id="@+id/spinner_load_preset"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="10dp"
+                    android:textAlignment="textStart"
+                    android:background="@drawable/spinner_background"
+                    android:popupBackground="@color/teal_light"
+                    android:fontFamily="@font/urbanist_semibold" />
+
+
+                <!-- Set Robot row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/label_set_robot"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/text_robotStartPoint"
+                        android:textColor="@color/black"
+                        android:fontFamily="@font/urbanist_semibold"
+                        android:textSize="16sp"/>
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/button_startpoint"
+                        android:layout_width="56dp"
+                        android:layout_height="32dp"
+                        android:checked="false"
+                        android:showText="false"
+                        app:useMaterialThemeColors="false"
+                        app:thumbTint="@color/switch_thumb_tint"
+                        app:trackTint="@color/switch_track_tint"
+                        app:splitTrack="false" />
+
+
+                </LinearLayout>
+
+                <!-- Set Direction row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/label_set_direction"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/text_setDirection"
+                        android:textColor="@color/black"
+                        android:fontFamily="@font/urbanist_semibold"
+                        android:textSize="16sp"/>
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/button_setDirection"
+                        android:layout_width="56dp"
+                        android:layout_height="32dp"
+                        android:checked="false"
+                        android:showText="false"
+                        app:useMaterialThemeColors="false"
+                        app:thumbTint="@color/switch_thumb_tint"
+                        app:trackTint="@color/switch_track_tint"
+                        app:splitTrack="false" />
+
+
+                </LinearLayout>
+            </LinearLayout>
+
+
+
+
+            <!-- Bottom-right circular control pad -->
+            <FrameLayout
+                android:id="@+id/controlPad"
+                android:layout_width="170dp"
+                android:layout_height="170dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="12dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent">
+
+                <!-- Outer ring -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/control_pad_outer" />
+
+                <!-- Inner layout with Start + arrows -->
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <!-- Center: Start -->
+                    <Button
+                        android:id="@+id/button_start"
+                        android:layout_width="90dp"
+                        android:layout_height="90dp"
+                        android:text="@string/button_start"
+                        android:textAllCaps="false"
+                        android:textColor="@android:color/white"
+                        android:fontFamily="@font/urbanist_semibold"
+                        android:background="@drawable/control_pad_inner"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent" />
+
+                    <!-- Up -->
+                    <ImageButton
+                        android:id="@+id/imageButton_up"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        android:background="@android:color/transparent"
+                        android:src="@drawable/arrow_up"
+                        app:layout_constraintBottom_toTopOf="@id/button_start"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent" />
+
+                    <!-- Down -->
+                    <ImageButton
+                        android:id="@+id/imageButton_down"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        android:background="@android:color/transparent"
+                        android:src="@drawable/arrow_down"
+                        app:layout_constraintTop_toBottomOf="@id/button_start"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent" />
+
+                    <!-- Left -->
+                    <ImageButton
+                        android:id="@+id/imageButton_left"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        android:background="@android:color/transparent"
+                        android:src="@drawable/arrow_left"
+                        app:layout_constraintEnd_toStartOf="@id/button_start"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent" />
+
+                    <!-- Right -->
+                    <ImageButton
+                        android:id="@+id/imageButton_right"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        android:background="@android:color/transparent"
+                        android:src="@drawable/arrow_right"
+                        app:layout_constraintStart_toEndOf="@id/button_start"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </FrameLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
