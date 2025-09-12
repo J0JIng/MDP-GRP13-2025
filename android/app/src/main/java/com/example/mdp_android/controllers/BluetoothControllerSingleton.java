@@ -1,14 +1,29 @@
 package com.example.mdp_android.controllers;
 
+import android.content.Context;
 import android.os.Handler;
 
 public class BluetoothControllerSingleton {
-    private static BluetoothController bController;
+    private static BluetoothController instance;
 
-    public static BluetoothController getInstance(Handler handler) {
-        if (bController == null) {
-            bController = new BluetoothController(handler);
+    // Existing 1-arg accessor (kept for compatibility)
+    public static synchronized BluetoothController getInstance(Handler handler) {
+        if (instance == null) {
+            instance = new BluetoothController(handler);
+        } else if (handler != null) {
+            instance.setHandler(handler);
         }
-        return bController;
+        return instance;
+    }
+
+    // Preferred 2-arg accessor (enables broadcasts)
+    public static synchronized BluetoothController getInstance(Context appContext, Handler handler) {
+        if (instance == null) {
+            instance = new BluetoothController(appContext, handler);
+        } else {
+            instance.setAppContext(appContext);
+            if (handler != null) instance.setHandler(handler);
+        }
+        return instance;
     }
 }
