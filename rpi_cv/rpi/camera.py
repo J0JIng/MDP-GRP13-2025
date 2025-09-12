@@ -1,32 +1,30 @@
 import base64
 import json
 import os
-import io
+import tempfile
 from typing import Dict, Any, Optional
 from picamera import PiCamera
 import cv2
-import numpy as np
 import time
 from datetime import datetime
 
 
-def capture_in_memory() -> Optional[np.ndarray]:
-    stream = io.BytesIO()
+def capture_to_file() -> Optional[str]:
+    """
+    Capture a single JPEG frame to a temp file and return its path.
+    """
+    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".jpg")
+    os.close(tmp_fd)  # close the OS-level fd, cv2 will open the file itself
+
     camera = PiCamera()
     try:
-        camera.resolution = (640, 480)  # matches your resize target
-        time.sleep(0.5)                 # sensor warm-up
-        camera.capture(stream, format='jpeg', use_video_port=True)
+        camera.resolution = (640, 480)
+        time.sleep(0.5)  # sensor warm-up
+        camera.capture(tmp_path, format='jpeg', use_video_port=True)
     finally:
         camera.close()
 
-    stream.seek(0)
-    data = np.frombuffer(stream.read(), dtype=np.uint8)
-    img = cv2.imdecode(data, cv2.IMREAD_COLOR)
-    if img is None:
-        print("[Camera] Failed to decode captured image")
-        return None
-    return img
+    return tmp_path
 
 
 def get_image(final_image: bool = False) -> bytes:
@@ -37,18 +35,25 @@ def get_image(final_image: bool = False) -> bytes:
     """
     encoded_string = ""
     err_msg = ""
-    img = capture_in_memory()
-    if img is not None:
-        if img.shape[1] != 640 or img.shape[0] != 480:
-            img = cv2.resize(img, (640, 480))
-        ok, buf = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
-        if ok:
-            encoded_string = base64.b64encode(buf.tobytes()).decode('utf-8')
+    tmp_path = capture_to_file()
+
+    if tmp_path and os.path.exists(tmp_path):
+        img = cv2.imread(tmp_path)
+        if img is not None:
+            if img.shape[1] != 640 or img.shape[0] != 480:
+                img = cv2.resize(img, (640, 480))
+            ok, buf = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+            if ok:
+                encoded_string = base64.b64encode(buf.tobytes()).decode('utf-8')
+            else:
+                err_msg = "Failed to JPEG-encode image"
+                print(f"[Camera] {err_msg}")
         else:
-            err_msg = "Failed to JPEG-encode image"
+            err_msg = "cv2.imread failed to decode image"
             print(f"[Camera] {err_msg}")
+        os.remove(tmp_path)
     else:
-        err_msg = "In-memory capture returned None"
+        err_msg = "Failed to capture image to file"
         print(f"[Camera] {err_msg}")
 
     message: Dict[str, Any] = {
