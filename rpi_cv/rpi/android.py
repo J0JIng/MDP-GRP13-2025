@@ -44,7 +44,7 @@ class AndroidInterface:
 
     def connect(self):
         host = self.rpi_config.get("api", {}).get("ip", "192.168.13.13")
-        uuid = self.bt_config.get("uuid", "8357ac59-b23b-4e2d-850e-560b6dd6fcb5")
+        uuid = self.bt_config.get("uuid", "00001101-0000-1000-8000-00805F9B34FB")
         service_name = self.bt_config.get("bluetooth", {}).get("service_name", "MDP-Group13-RPi")
 
         # Grant permission for Bluetooth access
