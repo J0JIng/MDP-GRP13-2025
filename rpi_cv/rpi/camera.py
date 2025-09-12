@@ -64,3 +64,11 @@ def get_image(final_image: bool = False) -> bytes:
         "error": err_msg,
     }
     return json.dumps(message).encode('utf-8')
+
+
+if __name__ == "__main__":
+    # Simple test: capture and save to a file
+    img_bytes = get_image(final_image=True)
+    with open("test_image_payload.json", "wb") as f:
+        f.write(img_bytes)
+    print("[Camera] Test image payload saved to test_image_payload.json")
