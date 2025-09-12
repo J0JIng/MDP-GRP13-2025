@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.util.Log;
 import android.os.Handler;
@@ -15,8 +16,9 @@ import android.os.Bundle;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import com.example.mdp_android.ui.bluetooth.BluetoothFragment;
+import com.example.mdp_android.Constants;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,6 +41,9 @@ public class BluetoothController {
     private AcceptThread mAcceptThread;
     private ConnectThread mConnectThread;
     private ConnectedThread mConnectedThread;
+
+    // for LocalBroadcasts
+    private Context appContext;
 
     // ================== State / UI ==================
     private int mState;
@@ -64,15 +69,30 @@ public class BluetoothController {
         int STATE_DISCONNECTED = 4;
     }
 
-    // ================== Ctor / Handler ==================
+    // ================== Ctors / setters ==================
+    // Legacy ctor (no broadcasts)
     public BluetoothController(Handler handler) {
         mAdapter = BluetoothAdapter.getDefaultAdapter();
         mState = StateConstants.STATE_NONE;
         mNewState = mState;
         mHandler = handler;
+        this.appContext = null;
+    }
+
+    // Preferred ctor (enables broadcasts)
+    public BluetoothController(Context context, Handler handler) {
+        mAdapter = BluetoothAdapter.getDefaultAdapter();
+        mState = StateConstants.STATE_NONE;
+        mNewState = mState;
+        mHandler = handler;
+        this.appContext = context != null ? context.getApplicationContext() : null;
     }
 
     public void setHandler(Handler handler) { this.mHandler = handler; }
+
+    public void setAppContext(Context context) {
+        this.appContext = context != null ? context.getApplicationContext() : null;
+    }
 
     public synchronized int getState() { return mState; }
 
@@ -198,7 +218,7 @@ public class BluetoothController {
     }
 
     // ================== Threads ==================
-    /** Server-side listener (optional; keeps your original behavior) */
+    /** Server-side listener */
     private class AcceptThread extends Thread {
         private BluetoothServerSocket mmServerSocket;
 
@@ -226,17 +246,11 @@ public class BluetoothController {
                 synchronized (BluetoothController.this) {
                     switch (mState) {
                         case StateConstants.STATE_LISTEN:
-                            Log.d(TAG, "STATE_LISTEN");
-                            break;
                         case StateConstants.STATE_CONNECTING:
-                            Log.d(TAG, "STATE_CONNECTING");
                             connected(socket, socket.getRemoteDevice());
                             break;
                         case StateConstants.STATE_NONE:
-                            Log.d(TAG, "STATE_NONE");
-                            break;
                         case StateConstants.STATE_CONNECTED:
-                            Log.d(TAG, "STATE_CONNECTED");
                             safeClose(socket);
                             break;
                     }
@@ -385,6 +399,13 @@ public class BluetoothController {
                                 .addReceivedMessage(getCurrentTime() + " " + receivedMessage);
                     } catch (Throwable t) {
                         Log.w(TAG, "MessageRepository unavailable; skipping addReceivedMessage", t);
+                    }
+
+                    // NEW: notify app via LocalBroadcast so UI updates instantly
+                    if (appContext != null) {
+                        Intent i = new Intent(Constants.ACTION_BLUETOOTH_MESSAGE_RECEIVED);
+                        i.putExtra(Constants.EXTRA_BLUETOOTH_MESSAGE, receivedMessage);
+                        LocalBroadcastManager.getInstance(appContext).sendBroadcast(i);
                     }
 
                 } catch (IOException e) {
