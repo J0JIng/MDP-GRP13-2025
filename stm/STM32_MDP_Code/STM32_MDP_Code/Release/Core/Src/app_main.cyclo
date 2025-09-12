@@ -1,0 +1,8 @@
+../Core/Src/app_main.cpp:97:6:void initializeCPPconstructs()	1
+../Core/Src/app_main.cpp:131:6:void sensorIRTask(void*)	1
+../Core/Src/app_main.cpp:136:6:void sensorUSTask(void*)	1
+../Core/Src/app_main.cpp:157:6:void sensorIMUTaskInit()	3
+../Core/Src/app_main.cpp:253:6:void quaternionUpdate(float, float, float, float, float, float, float)	1
+../Core/Src/app_main.cpp:180:6:void sensorIMUTask(void*)	3
+../Core/Src/app_main.cpp:333:6:void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef*)	5
+../Core/Src/app_main.cpp:357:1:cpp)	1

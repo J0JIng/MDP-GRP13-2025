@@ -1,0 +1,14 @@
+../Core/Src/ICM20948.c:101:19:IMU_WriteOneByte	32	static
+../Core/Src/ICM20948.c:107:19:IMU_ReadOneByte	24	static
+../Core/Src/ICM20948.c:19:10:IMU_Initialise	24	static
+../Core/Src/ICM20948.c:112:19:Mag_WriteOneByte	32	static
+../Core/Src/ICM20948.c:117:19:Mag_ReadOneByte	24	static
+../Core/Src/ICM20948.c:126:19:IMU_TempRead	24	static
+../Core/Src/ICM20948.c:137:19:IMU_AccelRead	32	static
+../Core/Src/ICM20948.c:180:19:Gyro_calibrate	40	static
+../Core/Src/ICM20948.c:214:19:IMU_GyroRead	32	static
+../Core/Src/ICM20948.c:253:19:Mag_init	0	static
+../Core/Src/ICM20948.c:260:19:Mag_read	32	static
+../Core/Src/ICM20948.c:279:6:magCalICM20948	40	static
+../Core/Src/ICM20948.c:364:6:MahonyQuaternionUpdate	80	static
+../Core/Src/ICM20948.c:460:14:getQ	0	static
