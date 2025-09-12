@@ -1,5 +1,6 @@
 import logging
 from queue import Queue
+from typing import Any, Dict, List
 import bluetooth as bt
 import socket
 import sys
@@ -8,6 +9,7 @@ import json
 from helper.socket_utils import sendall, to_bytes
 from config.load_config import load_bt_config, load_rpi_config
 from helper.logger import prepare_logger
+from rpi_main import RPiMain
 
 
 class AndroidInterface:
@@ -28,9 +30,9 @@ class AndroidInterface:
     - client_info (tuple): Information about the connected Android client.
     """
 
-    def __init__(self, RPiMain):
+    def __init__(self, rpi_main: RPiMain):
         # Initialize AndroidInterface with RPiMain instance
-        self.RPiMain = RPiMain
+        self.rpi_main = rpi_main
         # self.host = RPI_IP
         # self.uuid = BT_UUID
         self.rpi_config = load_rpi_config()
@@ -111,15 +113,21 @@ class AndroidInterface:
                     continue
 
                 self.logger.debug(f"[Android] Read from Android: {decodedMsg[:msg_log_max_size]}")
-                parsedMsg = json.loads(decodedMsg)
-                msg_type = parsedMsg["type"]
+                parsed_message = json.loads(decodedMsg)
+                msg_type = parsed_message["type"]
 
                 # Route messages to the appropriate destination
                 if msg_type == 'NAVIGATION':
-                    self.RPiMain.STM.msg_queue.put(message)
+                    self.rpi_main.STM.msg_queue.put(message)
 
-                elif msg_type == 'START_TASK' or msg_type == 'FASTEST_PATH':
-                    self.RPiMain.PC.msg_queue.put(message)
+                if msg_type == 'START_TASK':
+                    parsed_message = self.android_to_algo_payload(parsed_message)
+                    parsed_message_bytes = json.dumps(parsed_message).encode("utf-8")
+                    self.rpi_main.PC.msg_queue.put(parsed_message_bytes)
+
+                if msg_type == 'FASTEST_PATH':
+                    # TODO: implement payload conversion if needed
+                    self.rpi_main.PC.msg_queue.put(message)
 
             except (socket.error, IOError, Exception, ConnectionResetError) as e:
                 self.logger.error(f"[Android] ERROR: {e}")
@@ -164,7 +172,91 @@ class AndroidInterface:
                 else:
                     exception = False  # done sending, get next message
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-    # Removed _sendall and _to_bytes in favor of shared helpers (sendall, to_bytes)
+    def android_to_algo_payload(self, msg: Dict[str, Any], default_retrying: bool = False) -> Dict[str, Any]:
+        """Convert Android START_TASK message into Algorithm /path input.
+
+        Android shape (msg):
+            {"type": "START_TASK", "data": {"task": str, "robot": {...}, "obstacles": [...]}}
+
+        Algorithm /path expected shape:
+            {"robot_x": int, "robot_y": int, "robot_dir": int, "retrying": bool,
+            "obstacles": [{"id": int, "x": int, "y": int, "d": int}, ...]}
+        """
+        if msg.get("type") != "START_TASK":
+            # raise BridgeError("Expected type START_TASK from Android.")
+            self.logger.error("Expected type START_TASK from Android.")
+            return {}
+
+        data = msg.get("data") or {}
+        robot = data.get("robot") or {}
+        obstacles = data.get("obstacles") or []
+
+        try:
+            rx = int(robot["x"])  # already zero-based from Android
+            ry = int(robot["y"])  # already zero-based from Android
+            rdir = self.android_dir_to_algo(str(robot["dir"]))
+        except KeyError as e:
+            # raise BridgeError(f"Missing robot field: {e}")
+            self.logger.error(f"Missing robot field: {e}")
+            return {}
+        except ValueError:
+            self.logger.error("Robot x/y must be integers.")
+            return {}
+
+        if not self.is_valid_interior(rx, ry):
+            self.logger.error(
+                f"Robot at ({rx},{ry}) is invalid for the algorithm. Keep within 1..18 (outer ring is blocked)."
+            )
+            return {}
+
+        algo_obstacles: List[Dict[str, Any]] = []
+        for idx, o in enumerate(obstacles):
+            try:
+                oid = int(o["id"]) if isinstance(o.get("id"), (int, str)) else idx
+                ox = int(o["x"])  # zero-based
+                oy = int(o["y"])  # zero-based
+                od = self.android_dir_to_algo(str(o["dir"]))
+            except KeyError as e:
+                # raise BridgeError(f"Missing obstacle field: {e} (at obstacle index {idx})")
+                self.logger.error(f"Missing obstacle field: {e} (at obstacle index {idx})")
+                return {}
+            except ValueError:
+                self.logger.error(f"Obstacle fields must be integers (at obstacle index {idx}).")
+                return {}
+
+            if not self.is_valid_interior(ox, oy):
+                self.logger.error(
+                    f"Obstacle id {oid} at ({ox},{oy}) is invalid for the algorithm. Keep within 1..18."
+                )
+
+            algo_obstacles.append({"id": oid, "x": ox, "y": oy, "d": od})
+
+        retrying = bool(data.get("retrying", default_retrying))
+
+        return {
+            "robot_x": rx,
+            "robot_y": ry,
+            "robot_dir": rdir,
+            "retrying": retrying,
+            "obstacles": algo_obstacles,
+        }
+
+    def android_dir_to_algo(self, d: str) -> int:
+        DIR_MAP_STR_TO_INT = {"N": 0, "E": 2, "S": 4, "W": 6}
+        # DIR_MAP_INT_TO_STR = {v: k for k, v in DIR_MAP_STR_TO_INT.items()}
+
+        if d not in DIR_MAP_STR_TO_INT:
+            # raise BridgeError(f"Unknown direction string '{d}'. Expected one of N/E/S/W.")
+            self.logger.error(f"Unknown direction string '{d}'. Expected one of N/E/S/W.")
+            return -1
+        return DIR_MAP_STR_TO_INT[d]
+
+    def is_valid_interior(self, x: int, y: int) -> bool:
+        return (INTERIOR_MIN <= x <= INTERIOR_MAX_X) and (INTERIOR_MIN <= y <= INTERIOR_MAX_Y)
+
+
+WIDTH = 20
+HEIGHT = 20
+INTERIOR_MIN = 1
+INTERIOR_MAX_X = WIDTH - 2  # 18
+INTERIOR_MAX_Y = HEIGHT - 2  # 18
