@@ -9,8 +9,8 @@ import android.content.ClipboardManager;
 import android.database.DataSetObserver;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,7 +26,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.example.mdp_android.R;
-import com.example.mdp_android.controllers.BluetoothController;
+import com.example.mdp_android.Constants;
 import com.example.mdp_android.controllers.BluetoothControllerSingleton;
 import com.example.mdp_android.controllers.DeviceSingleton;
 import com.example.mdp_android.controllers.MessageRepository;
@@ -37,6 +37,7 @@ import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -52,7 +53,8 @@ public class MessagesFragment extends Fragment {
     private ListView lvReceivedMessages;
     private static ArrayAdapter<String> aSentMessages;
     private static ArrayAdapter<String> aReceivedMessages;
-    public static BluetoothController bController;
+
+    public static com.example.mdp_android.controllers.BluetoothController bController;
 
     private boolean receiverRegistered = false;
 
@@ -67,7 +69,11 @@ public class MessagesFragment extends Fragment {
 
         root.setBackgroundResource(R.drawable.background_pattern);
 
-        bController = BluetoothControllerSingleton.getInstance(new Handler());
+        // Build controller with appContext so LocalBroadcasts work
+        bController = BluetoothControllerSingleton.getInstance(
+                requireContext().getApplicationContext(),
+                new Handler(Looper.getMainLooper())
+        );
 
         lvSentMessages = root.findViewById(R.id.listView_sent);
         lvReceivedMessages = root.findViewById(R.id.listview_received);
@@ -98,12 +104,9 @@ public class MessagesFragment extends Fragment {
         aReceivedMessages.registerDataSetObserver(new DataSetObserver() {
             @Override public void onChanged() {
                 super.onChanged();
-                // use the RECEIVED adapter's count (bug fix)
                 lvReceivedMessages.setSelection(aReceivedMessages.getCount() - 1);
             }
         });
-
-        // (moved registration to onStart)
 
         sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View view) {
@@ -170,7 +173,8 @@ public class MessagesFragment extends Fragment {
         // Register receiver only while this tab is visible
         if (!receiverRegistered && getContext() != null) {
             LocalBroadcastManager.getInstance(getContext())
-                    .registerReceiver(mTextReceiver, new IntentFilter("getReceived"));
+                    .registerReceiver(mTextReceiver,
+                            new IntentFilter(Constants.ACTION_BLUETOOTH_MESSAGE_RECEIVED));
             receiverRegistered = true;
         }
     }
@@ -194,7 +198,9 @@ public class MessagesFragment extends Fragment {
     }
 
     private void updateReceivedMessages() {
-        List<String> messages = MessageRepository.getInstance().getReceivedMessages();
+        List<String> messages = MessageRepository.getInstance().getReceivedMessages(); // copy
+        // Repo stores newest-first; show newest at bottom
+        Collections.reverse(messages);
         if (aReceivedMessages != null) {
             aReceivedMessages.clear();
             aReceivedMessages.addAll(messages);
@@ -203,7 +209,8 @@ public class MessagesFragment extends Fragment {
     }
 
     private void updateSentMessages() {
-        List<String> messages = MessageRepository.getInstance().getSentMessages();
+        List<String> messages = MessageRepository.getInstance().getSentMessages(); // copy
+        Collections.reverse(messages);
         if (aSentMessages != null) {
             aSentMessages.clear();
             aSentMessages.addAll(messages);
@@ -232,23 +239,18 @@ public class MessagesFragment extends Fragment {
     private final BroadcastReceiver mTextReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            Log.d(TAG, "receiving messages");
-            String textReceived = intent.getStringExtra("received");
-            JSONObject response = RpiController.readRpiMessages(textReceived);
-            // Update UI immediately on the main thread
+            Log.d(TAG, "receiving messages (broadcast)");
+            String textReceived = intent.getStringExtra(Constants.EXTRA_BLUETOOTH_MESSAGE);
+
+            // Optional parse (do not append directly to adapter to avoid duplicates)
+            try { RpiController.readRpiMessages(textReceived); } catch (Throwable ignored) {}
+
+            // Refresh from repository (controller already saved the message there)
             View root = getView();
             if (root != null) {
-                root.post(() -> {
-                    if (response != null) {
-                        String responseString = response.toString();
-                        appendAReceivedMessages(textReceived);
-                    } else {
-                        appendAReceivedMessages(textReceived);
-                    }
-                });
+                root.post(() -> updateReceivedMessages());
             } else {
-                // Fallback if view is null (shouldn't happen while visible)
-                appendAReceivedMessages(textReceived);
+                updateReceivedMessages();
             }
         }
     };
@@ -265,14 +267,18 @@ public class MessagesFragment extends Fragment {
         aSentMessages.notifyDataSetChanged();
     }
 
+    // Kept for compatibility; broadcast path uses updateReceivedMessages()
     public static void appendAReceivedMessages(String message) {
-        // Append to END so observer scrolls to newest
         aReceivedMessages.add(getCurrentTime() + ": " + message);
         aReceivedMessages.notifyDataSetChanged();
     }
 
     private void sendMessage(String m) {
-        bController.write(m.getBytes(StandardCharsets.UTF_8));
+        if (bController != null) {
+            bController.write(m.getBytes(StandardCharsets.UTF_8));
+        } else {
+            toast("Bluetooth controller not ready");
+        }
     }
 
     public void toast(String message) {
