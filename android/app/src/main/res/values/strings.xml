@@ -30,6 +30,7 @@
     <string name="text_robotStartPoint">Set Robot:</string>
     <string name="text_setDirection">Set Direction:</string>
     <string name="text_taskType">Select Task Type:</string>
+    <string name="add_edit_obstacle">Add/Edit Obstacle</string>
 
     <!--  strings used for bluetooth page  -->
     <string name="button_scan">Start Scanning</string>

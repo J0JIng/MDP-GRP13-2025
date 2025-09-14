@@ -12,6 +12,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.provider.Settings;
 import android.util.Log;
@@ -30,6 +31,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -63,6 +65,7 @@ public class BluetoothFragment extends Fragment {
     public BluetoothController bController = BluetoothControllerSingleton.getInstance(null);
     private LottieAnimationView lottieScan;
     private boolean isScanning = false;
+    private boolean receiversRegistered = false;
 
     // bluetooth indicators
     private String connectedDevice = "";
@@ -146,7 +149,6 @@ public class BluetoothFragment extends Fragment {
         lvAvailableDevices.setOnItemClickListener(handleDeviceClicked);
 
         deviceSingleton = DeviceSingleton.getInstance();
-        registerReceivers();
 
         if (bAdapter == null) {
             toast("bluetooth not supported", Toast.LENGTH_SHORT);
@@ -164,6 +166,25 @@ public class BluetoothFragment extends Fragment {
     }
 
     // hydrating the view with the view model
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        // make sure controller uses THIS handler only while view exists
+        bController.setHandler(mHandler);
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        registerReceivers(); // register only when attached
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        unregisterReceivers(); // pair with onStart
+    }
+
     @Override
     public void onResume() {
         super.onResume();
@@ -205,13 +226,20 @@ public class BluetoothFragment extends Fragment {
     public void connectDevice(String address, String device) {
         final BluetoothDevice bDevice = bAdapter.getRemoteDevice(address);
         bController.setHandler(mHandler);
+        if (bAdapter != null && bAdapter.isDiscovering()) bAdapter.cancelDiscovery(); // avoid race
         bController.connect(bDevice);
         connectedDevice = device;
     }
 
-    public final Handler mHandler = new Handler(new Handler.Callback() {
+    // Lifecycle-safe handler: drops messages if fragment is not attached or view is gone
+    public final Handler mHandler = new Handler(Looper.getMainLooper(), new Handler.Callback() {
         @Override
         public boolean handleMessage(@NonNull Message message) {
+            if (!isAdded() || binding == null) {
+                Log.w(TAG, "Dropping BT msg " + message.what + " (fragment not attached)");
+                return true;
+            }
+
             switch (message.what) {
                 case BluetoothController.MessageConstants.MESSAGE_STATE_CHANGE:
                     switch (message.arg1) {
@@ -219,8 +247,8 @@ public class BluetoothFragment extends Fragment {
                             Log.d(TAG + " Handler Log: ", "STATE_NONE");
                             connectedDevice = "";
                             deviceSingleton.setDeviceName(connectedDevice);
-                            if (binding.getRoot().getContext() != null) {
-                                bluetoothViewModel.setDevice(binding.getRoot().getContext().getString(R.string.bluetooth_device_connected_not));
+                            if (getContext() != null) {
+                                bluetoothViewModel.setDevice(getString(R.string.bluetooth_device_connected_not));
                                 sendBluetoothStatus(connectedDevice);
                             }
                             break;
@@ -228,8 +256,8 @@ public class BluetoothFragment extends Fragment {
                             Log.d(TAG + " Handler Log: ", "STATE_LISTEN");
                             connectedDevice = "";
                             deviceSingleton.setDeviceName(connectedDevice);
-                            if (binding.getRoot().getContext() != null) {
-                                bluetoothViewModel.setDevice(binding.getRoot().getContext().getString(R.string.bluetooth_device_connected_not));
+                            if (getContext() != null) {
+                                bluetoothViewModel.setDevice(getString(R.string.bluetooth_device_connected_not));
                                 sendBluetoothStatus(connectedDevice);
                             }
                             break;
@@ -238,17 +266,17 @@ public class BluetoothFragment extends Fragment {
                             toast("Connecting...Please wait", Toast.LENGTH_SHORT);
                             connectedDevice = "";
                             deviceSingleton.setDeviceName(connectedDevice);
-                            if (binding.getRoot().getContext() != null) {
-                                bluetoothViewModel.setDevice(binding.getRoot().getContext().getString(R.string.bluetooth_device_connected_not));
+                            if (getContext() != null) {
+                                bluetoothViewModel.setDevice(getString(R.string.bluetooth_device_connected_not));
                                 sendBluetoothStatus(connectedDevice);
                             }
                             break;
                         case BluetoothController.StateConstants.STATE_CONNECTED:
                             Log.d(TAG + " Handler Log: ", "STATE_CONNECTED");
                             toast("connected to: " + connectedDevice, Toast.LENGTH_SHORT);
-                            if (binding.getRoot().getContext() != null) {
+                            if (getContext() != null) {
                                 Log.d(TAG, "update bluetooth status");
-                                bluetoothViewModel.setDevice(binding.getRoot().getContext().getString(R.string.bluetooth_device_connected) + connectedDevice);
+                                bluetoothViewModel.setDevice(getString(R.string.bluetooth_device_connected) + connectedDevice);
                                 sendBluetoothStatus(connectedDevice);
                             }
                             break;
@@ -263,9 +291,14 @@ public class BluetoothFragment extends Fragment {
                     break;
                 case BluetoothController.MessageConstants.MESSAGE_READ:
                     Log.d(TAG + " Handler Log: ", "MESSAGE_READ");
-                    byte[] readBuf = (byte[]) message.obj;
-                    String readMessage = new String(readBuf, 0, message.arg1);
-                    sendReceived(readMessage);
+                    byte[] readBuf = (byte[]) message.obj;          // controller sends byte[]
+                    int len = message.arg1;                          // number of bytes read
+                    if (readBuf == null || len <= 0) {
+                        Log.w(TAG, "Empty payload, ignoring");
+                        return true;
+                    }
+                    String readMessage = new String(readBuf, 0, len);
+                    sendReceived(readMessage);                       // lifecycle-safe now
                     Log.d(TAG, "Handler Log: MESSAGE_READ - " + readMessage);
                     break;
                 case BluetoothController.MessageConstants.MESSAGE_DEVICE_NAME:
@@ -277,16 +310,16 @@ public class BluetoothFragment extends Fragment {
                     break;
                 case BluetoothController.MessageConstants.MESSAGE_TOAST:
                     Log.d(TAG + " Handler Log: ", "MESSAGE_TOAST");
-                    if (binding.getRoot().getContext() != null) {
+                    if (getContext() != null) {
                         String error = message.getData().getString("toast");
-                        toast(error, Toast.LENGTH_SHORT);
+                        if (error != null) toast(error, Toast.LENGTH_SHORT);
                     }
                     break;
                 case BluetoothController.MessageConstants.MESSAGE_PICTURE:
                     Log.d(TAG + " Handler Log: ", "MESSAGE_PICTURE");
                     break;
             }
-            return false;
+            return true;
         }
     });
 
@@ -417,51 +450,83 @@ public class BluetoothFragment extends Fragment {
         }
     };
 
+    /** Register receivers only when the Fragment is attached */
     public void registerReceivers() {
+        if (receiversRegistered) return;
+        Context ctx = getContext();
+        if (ctx == null) return;
         IntentFilter filter = new IntentFilter();
         filter.addAction(BluetoothDevice.ACTION_FOUND);
         filter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
         filter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
         filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-        requireContext().registerReceiver(bluetoothBroadcastReceiver, filter);
+        ctx.registerReceiver(bluetoothBroadcastReceiver, filter);
+        receiversRegistered = true;
+    }
+
+    public void unregisterReceivers() {
+        if (!receiversRegistered) return;
+        Context ctx = getContext();
+        if (ctx == null) return;
+        try {
+            ctx.unregisterReceiver(bluetoothBroadcastReceiver);
+        } catch (IllegalArgumentException ignored) {}
+        receiversRegistered = false;
     }
 
     // Check for BT Permission (safer per-permission check)
     private void checkBluetoothPermission() {
-        if (requireContext().checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED
-                || requireContext().checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
-                || requireContext().checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                || requireContext().checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        Context ctx = getContext();
+        if (ctx == null) return;
 
-            ActivityCompat.requestPermissions(requireActivity(),
-                    new String[]{
-                            Manifest.permission.BLUETOOTH_SCAN,
-                            Manifest.permission.BLUETOOTH_CONNECT,
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                    }, 1001);
+        if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(ctx, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            if (isAdded()) {
+                ActivityCompat.requestPermissions(requireActivity(),
+                        new String[]{
+                                Manifest.permission.BLUETOOTH_SCAN,
+                                Manifest.permission.BLUETOOTH_CONNECT,
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                        }, 1001);
+            }
         }
     }
 
     public void toast(String message, int duration) {
-        Toast.makeText(requireContext(), message, duration).show();
+        Context ctx = getContext();
+        if (ctx != null) {
+            Toast.makeText(ctx, message, duration).show();
+        }
     }
 
     // Method: Pass bluetooth status to other fragments
     private void sendBluetoothStatus(String msg) {
+        if (!isAdded()) return;
         updateDeviceName();
         Log.d(TAG, "sending device name, " + msg);
+        Context ctx = getContext();
+        if (ctx == null) return;
         Intent intent = new Intent("getConnectedDevice");
         intent.putExtra("name", msg);
-        LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(intent);
+        LocalBroadcastManager.getInstance(ctx).sendBroadcast(intent);
     }
 
     // Method: pass received text to messages fragment
     private void sendReceived(String msg) {
+        if (!isAdded()) {
+            Log.w(TAG, "sendReceived() called when fragment not added; dropping msg");
+            return;
+        }
         Log.d(TAG, "received msg: " + msg);
+        Context ctx = getContext();
+        if (ctx == null) return;
         Intent intent = new Intent("getReceived");
         intent.putExtra("received", msg);
-        LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(intent);
+        LocalBroadcastManager.getInstance(ctx).sendBroadcast(intent);
     }
 
     private void updateDeviceName() {
@@ -473,9 +538,16 @@ public class BluetoothFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        try {
-            requireContext().unregisterReceiver(bluetoothBroadcastReceiver);
-        } catch (IllegalArgumentException ignored) {}
+        // stop receiving messages to this (now-detached) UI
+        bController.setHandler(null);
+        mHandler.removeCallbacksAndMessages(null);
+
+        // ensure discovery is stopped to avoid leaking the view
+        if (bAdapter != null && bAdapter.isDiscovering()) bAdapter.cancelDiscovery();
+
+        // extra safety — receivers are primarily unregistered in onStop
+        unregisterReceivers();
+
         binding = null;
     }
 }

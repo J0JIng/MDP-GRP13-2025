@@ -682,282 +682,120 @@ public class Map extends View {
         return true;
     }
 
+    // Map.java (inside the Map class)
+    private void addObstacle(int x, int y, String id, String dir) {
+        setObstacleCoor(x, y, id);           // x,y are 1..20 in Map
+        int row = convertRow(y);              // convert to row index used by cells[][]
+        int idx = cells[x][row].getObsIndex();// index of this obstacle in obstacleCoor
+        obstacleCoor.get(idx).setDirection(dir); // "N","E","S","W"
+    }
+
+
     public void setPresetObstacles(String preset) {
         switch (preset) {
             case "Preset 1":
-                setObstacleCoor(2, 7, "1"); // south
-                obstacleCoor.get(cells[2][convertRow(7)].getObsIndex()).setDirection("S"); // This line is responsible for setting the direction of the obstacle, note the usage of "convertRow"
-
-                setObstacleCoor(5, 7, "2"); // south
-                obstacleCoor.get(cells[5][convertRow(7)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(6, 9, "3"); // east
-                obstacleCoor.get(cells[6][convertRow(9)].getObsIndex()).setDirection("E");
-
-                setObstacleCoor(17, 12, "4"); // west
-                obstacleCoor.get(cells[17][convertRow(12)].getObsIndex()).setDirection("W");
-
-                setObstacleCoor(8, 19, "5"); // south
-                obstacleCoor.get(cells[8][convertRow(19)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(14, 6, "6"); // north
-                obstacleCoor.get(cells[14][convertRow(6)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(18, 18, "7"); // north
-                obstacleCoor.get(cells[18][convertRow(18)].getObsIndex()).setDirection("W");
-
-                setObstacleCoor(11, 14, "8"); // north
-                obstacleCoor.get(cells[11][convertRow(14)].getObsIndex()).setDirection("N");
+                addObstacle(3,  5,  "1", "S");
+                addObstacle(6,  8,  "2", "E");
+                addObstacle(9,  12, "3", "N");
+                addObstacle(12, 16, "4", "W");
+                addObstacle(15, 7,  "5", "S");
+                addObstacle(18, 14, "6", "N");
+//                addObstacle(7,  19, "7", "W");
+//                addObstacle(14, 10, "8", "E");
+//                addObstacle(20, 4,  "9", "W");
                 break;
 
             case "Preset 2":
-//                        set 2: [[[4, 8], 'south'], [[10, 2], 'west'], [[7, 19], 'south'], [[12, 16], 'west'], [[16, 9], 'north']]
-                setObstacleCoor(4, 8, "1"); // south
-                obstacleCoor.get(cells[4][convertRow(8)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(10, 2, "2"); // west
-                obstacleCoor.get(cells[10][convertRow(2)].getObsIndex()).setDirection("W");
-
-                setObstacleCoor(7, 19, "3"); // south
-                obstacleCoor.get(cells[7][convertRow(19)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(12, 16, "4"); // west
-                obstacleCoor.get(cells[12][convertRow(16)].getObsIndex()).setDirection("W");
-
-                setObstacleCoor(16, 9, "5"); // north
-                obstacleCoor.get(cells[16][convertRow(9)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(18, 17, "6"); // north
-                obstacleCoor.get(cells[18][convertRow(17)].getObsIndex()).setDirection("W");
-
-                setObstacleCoor(19, 2, "7"); // north
-                obstacleCoor.get(cells[19][convertRow(2)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(3, 14, "8"); // north
-                obstacleCoor.get(cells[3][convertRow(14)].getObsIndex()).setDirection("N");
+                addObstacle(4,  6,  "1", "E");
+                addObstacle(8,  3,  "2", "S");
+                addObstacle(11, 9,  "3", "N");
+                addObstacle(16, 5,  "4", "W");
+                addObstacle(19, 13, "5", "N");
+                addObstacle(5,  18, "6", "S");
+                addObstacle(13, 15, "7", "E");
+                addObstacle(17, 8,  "8", "W");
                 break;
+
             case "Preset 3":
-//                set 3: [[[1, 16], 'south'], [[7, 9], 'west'], [[11, 5], 'north'], [[5, 2], 'north'], [[16, 13], 'west']]
-                setObstacleCoor(1, 16, "1"); // south
-                obstacleCoor.get(cells[1][convertRow(16)].getObsIndex()).setDirection("E");
+                addObstacle(3,  17, "1", "S");
+                addObstacle(6,  15, "2", "E");
+                addObstacle(10, 6,  "3", "W");
+                addObstacle(12, 12, "4", "N");
+                addObstacle(15, 9,  "5", "S");
+                addObstacle(18, 3,  "6", "E");
+                addObstacle(7,  13, "7", "W");
+                addObstacle(14, 18, "8", "N");
+                addObstacle(20, 5,  "9", "E");
+                addObstacle(8, 9,  "10", "W");
 
-                setObstacleCoor(7, 9, "2"); // west
-                obstacleCoor.get(cells[7][convertRow(9)].getObsIndex()).setDirection("W");
-
-                setObstacleCoor(11, 5, "3"); // north
-                obstacleCoor.get(cells[11][convertRow(5)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(5, 2, "4"); // north
-                obstacleCoor.get(cells[5][convertRow(2)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(16, 13, "5"); // west
-                obstacleCoor.get(cells[16][convertRow(13)].getObsIndex()).setDirection("W");
-
-                setObstacleCoor(9, 17, "6");
-                obstacleCoor.get(cells[9][convertRow(17)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(17, 6, "7");
-                obstacleCoor.get(cells[17][convertRow(6)].getObsIndex()).setDirection("E");
-
-                setObstacleCoor(17, 18, "8");
-                obstacleCoor.get(cells[17][convertRow(18)].getObsIndex()).setDirection("E");
                 break;
 
             case "Preset 4":
-//                set 4: [[[1, 6], 'east'], [[5, 9], 'east'], [[12, 9], 'east'], [[12, 6], 'south'], [[10, 13], 'north']]
-                setObstacleCoor(1, 6, "1"); // east
-                obstacleCoor.get(cells[1][convertRow(6)].getObsIndex()).setDirection("E");
-
-                setObstacleCoor(5, 9, "2"); // east
-                obstacleCoor.get(cells[5][convertRow(9)].getObsIndex()).setDirection("E");
-
-                setObstacleCoor(12, 9, "3"); // east
-                obstacleCoor.get(cells[12][convertRow(9)].getObsIndex()).setDirection("E");
-
-                setObstacleCoor(12, 6, "4"); // south
-                obstacleCoor.get(cells[12][convertRow(6)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(10, 13, "5"); // north
-                obstacleCoor.get(cells[10][convertRow(13)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(4, 17, "6");
-                obstacleCoor.get(cells[4][convertRow(17)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(17, 17, "7"); // north
-                obstacleCoor.get(cells[17][convertRow(17)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(19, 1, "8"); // north
-                obstacleCoor.get(cells[19][convertRow(1)].getObsIndex()).setDirection("N");
+                addObstacle(3,  9,  "1", "E");
+                addObstacle(5,  13, "2", "S");
+                addObstacle(9,  4,  "3", "N");
+                addObstacle(13, 7,  "4", "W");
+                addObstacle(16, 16, "5", "N");
+                addObstacle(19, 6,  "6", "S");
+                addObstacle(11, 19, "7", "E");
+                addObstacle(6,  20, "8", "W");
+                addObstacle(17, 10, "9", "S");
+                addObstacle(20, 20,  "10", "S");
                 break;
 
             case "Preset 5":
-//                set 5: [[[5, 0], 'north'], [[9, 6], 'south'], [[12, 8], 'north'], [[12, 15], 'east'], [[5, 18], 'south']]
-                setObstacleCoor(5, 1, "1"); // north
-                obstacleCoor.get(cells[5][convertRow(1)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(9, 6, "2"); // south
-                obstacleCoor.get(cells[9][convertRow(6)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(12, 8, "3"); // north
-                obstacleCoor.get(cells[12][convertRow(8)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(12, 15, "4"); // east
-                obstacleCoor.get(cells[9][convertRow(6)].getObsIndex()).setDirection("E");
-
-                setObstacleCoor(5, 18, "5"); // south
-                obstacleCoor.get(cells[5][convertRow(18)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(18, 18, "6");
-                obstacleCoor.get(cells[18][convertRow(18)].getObsIndex()).setDirection("W");
-
-                setObstacleCoor(18, 12, "7"); // south
-                obstacleCoor.get(cells[18][convertRow(12)].getObsIndex()).setDirection("W");
-
-                setObstacleCoor(16, 4, "8"); // south
-                obstacleCoor.get(cells[16][convertRow(4)].getObsIndex()).setDirection("S");
+                addObstacle(4,  18, "1", "N");
+                addObstacle(8,  14, "2", "E");
+                addObstacle(12, 9,  "3", "S");
+                addObstacle(15, 5,  "4", "W");
+                addObstacle(20, 12, "5", "N");
+                addObstacle(6,  3,  "6", "E");
+                addObstacle(10, 17, "7", "W");
+                addObstacle(14, 6,  "8", "S");
+                addObstacle(18, 20, "9", "E");
+                addObstacle(5, 8,  "10", "N");
                 break;
 
             case "Preset 6":
-                setObstacleCoor(3, 18, "1"); // south
-                obstacleCoor.get(cells[3][convertRow(18)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(11, 13, "2"); // north
-                obstacleCoor.get(cells[11][convertRow(13)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(4, 11, "3"); // east
-                obstacleCoor.get(cells[4][convertRow(11)].getObsIndex()).setDirection("E");
-
-                setObstacleCoor(9, 7, "4"); // east
-                obstacleCoor.get(cells[9][convertRow(7)].getObsIndex()).setDirection("E");
-
-                setObstacleCoor(16, 3, "5"); // west
-                obstacleCoor.get(cells[16][convertRow(3)].getObsIndex()).setDirection("W");
-
-                setObstacleCoor(18, 11, "6"); // west
-                obstacleCoor.get(cells[18][convertRow(11)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(18, 20, "7"); // west
-                obstacleCoor.get(cells[18][convertRow(20)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(9, 18, "8");
-                obstacleCoor.get(cells[9][convertRow(18)].getObsIndex()).setDirection("E");
+                addObstacle(5,  5,  "1", "W");
+                addObstacle(7,  5,  "2", "S");
+                addObstacle(11, 11, "3", "N");
+                addObstacle(16, 8,  "4", "W");
+                addObstacle(19, 4,  "5", "S");
+                addObstacle(6,  16, "6", "N");
+                addObstacle(13, 20, "7", "W");
+                addObstacle(17, 14, "8", "E");
+                addObstacle(20, 9,  "9", "N");
+                addObstacle(9, 9,  "10", "N");
                 break;
 
-            case "Preset 7":
-//                set 7: [[[5, 1], 'east'], [[11, 6], 'south'], [[11, 8], 'north'], [[11, 15], 'east'], [[2, 13], 'north']]
-                setObstacleCoor(5, 1, "1"); // east
-                obstacleCoor.get(cells[5][convertRow(1)].getObsIndex()).setDirection("E");
+//            case "Preset 7":
+////                set 7: [[[5, 1], 'east'], [[11, 6], 'south'], [[11, 8], 'north'], [[11, 15], 'east'], [[2, 13], 'north']]
+//                setObstacleCoor(5, 1, "1"); // east
+//                obstacleCoor.get(cells[5][convertRow(1)].getObsIndex()).setDirection("E");
+//
+//                setObstacleCoor(11, 6, "2"); // south
+//                obstacleCoor.get(cells[11][convertRow(6)].getObsIndex()).setDirection("S");
+//
+//                setObstacleCoor(11, 8, "3"); // north
+//                obstacleCoor.get(cells[11][convertRow(8)].getObsIndex()).setDirection("N");
+//
+//                setObstacleCoor(11, 15, "4"); // east
+//                obstacleCoor.get(cells[11][convertRow(15)].getObsIndex()).setDirection("E");
+//
+//                setObstacleCoor(2, 13, "5"); // north
+//                obstacleCoor.get(cells[2][convertRow(13)].getObsIndex()).setDirection("S");
+//
+//                setObstacleCoor(17, 7, "6"); // north
+//                obstacleCoor.get(cells[17][convertRow(7)].getObsIndex()).setDirection("N");
+//
+//                setObstacleCoor(18, 15, "7"); // north
+//                obstacleCoor.get(cells[18][convertRow(15)].getObsIndex()).setDirection("N");
+//
+//                setObstacleCoor(2, 17, "8"); // north
+//                obstacleCoor.get(cells[2][convertRow(17)].getObsIndex()).setDirection("E");
+//                break;
 
-                setObstacleCoor(11, 6, "2"); // south
-                obstacleCoor.get(cells[11][convertRow(6)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(11, 8, "3"); // north
-                obstacleCoor.get(cells[11][convertRow(8)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(11, 15, "4"); // east
-                obstacleCoor.get(cells[11][convertRow(15)].getObsIndex()).setDirection("E");
-
-                setObstacleCoor(2, 13, "5"); // north
-                obstacleCoor.get(cells[2][convertRow(13)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(17, 7, "6"); // north
-                obstacleCoor.get(cells[17][convertRow(7)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(18, 15, "7"); // north
-                obstacleCoor.get(cells[18][convertRow(15)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(2, 17, "8"); // north
-                obstacleCoor.get(cells[2][convertRow(17)].getObsIndex()).setDirection("E");
-                break;
-
-            case "Preset 8":
-                setObstacleCoor(10, 6, "1"); // south
-                obstacleCoor.get(cells[10][convertRow(6)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(11, 6, "2"); // east
-                obstacleCoor.get(cells[11][convertRow(6)].getObsIndex()).setDirection("E");
-
-                setObstacleCoor(11, 7, "3"); // north
-                obstacleCoor.get(cells[11][convertRow(7)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(10, 7, "4"); // west
-                obstacleCoor.get(cells[10][convertRow(7)].getObsIndex()).setDirection("W");
-                break;
-
-            case "Preset 9":
-                setObstacleCoor(6, 20, "1"); // east
-                obstacleCoor.get(cells[6][convertRow(20)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(12, 20, "2"); // south
-                obstacleCoor.get(cells[12][convertRow(20)].getObsIndex()).setDirection("E");
-
-                setObstacleCoor(13, 6, "3"); // north
-                obstacleCoor.get(cells[13][convertRow(6)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(20, 11, "4"); // east
-                obstacleCoor.get(cells[20][convertRow(11)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(6, 9, "5"); // north
-                obstacleCoor.get(cells[6][convertRow(9)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(12, 10, "6"); // north
-                obstacleCoor.get(cells[12][convertRow(10)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(6, 5, "7"); // north
-                obstacleCoor.get(cells[6][convertRow(5)].getObsIndex()).setDirection("W");
-
-                setObstacleCoor(14, 6, "8"); // north
-                obstacleCoor.get(cells[14][convertRow(6)].getObsIndex()).setDirection("E");
-                break;
-
-            case "Preset 10":
-                setObstacleCoor(2, 17, "1"); // east
-                obstacleCoor.get(cells[2][convertRow(17)].getObsIndex()).setDirection("E");
-
-                setObstacleCoor(6, 13, "2"); // south
-                obstacleCoor.get(cells[6][convertRow(13)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(9, 6, "3"); // north
-                obstacleCoor.get(cells[9][convertRow(6)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(12, 15, "4"); // east
-                obstacleCoor.get(cells[12][convertRow(15)].getObsIndex()).setDirection("E");
-
-                setObstacleCoor(16, 3, "5"); // north
-                obstacleCoor.get(cells[16][convertRow(3)].getObsIndex()).setDirection("W");
-
-                setObstacleCoor(17, 20, "6"); // north
-                obstacleCoor.get(cells[17][convertRow(20)].getObsIndex()).setDirection("S");
-
-                setObstacleCoor(20, 10, "7"); // north
-                obstacleCoor.get(cells[20][convertRow(10)].getObsIndex()).setDirection("W");
-
-                break;
-
-
-            case "Preset 11":
-                setObstacleCoor(1, 19, "1"); // east
-                obstacleCoor.get(cells[1][convertRow(19)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(1, 18, "2"); // east
-                obstacleCoor.get(cells[1][convertRow(19)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(1, 17, "3"); // east
-                obstacleCoor.get(cells[1][convertRow(19)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(1, 16, "4"); // east
-                obstacleCoor.get(cells[1][convertRow(19)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(1, 15, "5"); // east
-                obstacleCoor.get(cells[1][convertRow(19)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(1, 14, "6"); // east
-                obstacleCoor.get(cells[1][convertRow(19)].getObsIndex()).setDirection("N");
-
-                setObstacleCoor(1, 13, "7"); // east
-                obstacleCoor.get(cells[1][convertRow(19)].getObsIndex()).setDirection("N");
-
-                break;
         }
     }
 

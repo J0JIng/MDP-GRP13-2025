@@ -36,7 +36,7 @@ public class AddObstacleDialogFragment extends DialogFragment {
         NumberPicker py = view.findViewById(R.id.picker_y);
         Spinner dir = view.findViewById(R.id.spinner_dir);
 
-        id.setMinValue(1);  id.setMaxValue(8);
+        id.setMinValue(1);  id.setMaxValue(10);
         px.setMinValue(0);  px.setMaxValue(19);
         py.setMinValue(0);  py.setMaxValue(19);
 
@@ -49,7 +49,6 @@ public class AddObstacleDialogFragment extends DialogFragment {
         Bundle args = getArguments();
         boolean editMode = args != null && args.getBoolean(ARG_EDIT_MODE, false);
         if (editMode && args != null) {
-            // ID / X / Y are already in 1..8 and 0..19 ranges per your wiring
             int idVal = args.getInt(B_ID, 1);
             int xVal  = args.getInt(B_X, 0);
             int yVal  = args.getInt(B_Y, 0);

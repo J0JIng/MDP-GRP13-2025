@@ -41,69 +41,73 @@
                 android:layout_weight="1"/>
 
             <FrameLayout
+                android:id="@+id/taskTypeSwitchContainer"
                 android:layout_width="wrap_content"
-                android:layout_height="50dp"
-                android:layout_weight="2"
-                android:background="@drawable/seg_track_teal"
-                android:padding="4dp">
+                android:layout_height="48dp"
+                android:layout_gravity="end"
+                android:background="@drawable/switch_bg_teal_dark"
+                android:padding="4dp"
+                android:clipToPadding="false"
+                android:clipChildren="false">
 
-                <com.google.android.material.button.MaterialButtonToggleGroup
+
+            <!-- Single switch: custom track + thumb -->
+                <androidx.appcompat.widget.SwitchCompat
                     android:id="@+id/taskTypeGroup"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    app:singleSelection="true"
-                    app:selectionRequired="true"
-                    app:checkedButton="@+id/btn_image_rec">
+                    android:layout_height="40dp"
+                    android:splitTrack="false"
+                    android:background="@android:color/transparent"
+                    android:showText="false"
+                    android:switchMinWidth="220dp"
+                    android:thumb="@drawable/switch_thumb_white"
+                    android:track="@drawable/switch_track_teal_dark"
+                    app:thumbTint="@color/teal_light"
+                    app:trackTint="@color/switch_track" />
 
-                    <com.google.android.material.button.MaterialButton
+                <!-- Overlay labels, same height, no touch -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@android:color/transparent"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp">
+
+                    <TextView
                         android:id="@+id/btn_image_rec"
-                        android:layout_width="0dp"
+                        android:layout_width="130dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:minWidth="0dp"
-                        android:minHeight="0dp"
-                        android:paddingHorizontal="10dp"
-                        android:text="@string/button_imagerec"
-                        android:textAllCaps="false"
-                        android:singleLine="false"
-                        android:lines="2"
-                        android:maxLines="2"
-                        android:ellipsize="none"
+                        android:ellipsize="end"
+                        android:fontFamily="@font/urbanist_semibold"
                         android:gravity="center"
-                        android:textAlignment="center"
                         android:includeFontPadding="false"
-                        android:textSize="14sp"
-                        app:cornerRadius="20dp"
-                        app:strokeWidth="0dp"
-                        app:rippleColor="@android:color/transparent"
-                        app:backgroundTint="@color/seg_btn_bg_teal"
-                        android:textColor="@color/seg_btn_text_teal"/>
+                        android:maxLines="1"
+                        android:singleLine="true"
+                        android:text="Image Recognition"
+                        android:textColor="@color/white"
+                        android:textSize="14sp" />
 
-                    <com.google.android.material.button.MaterialButton
+                    <TextView
                         android:id="@+id/btn_fastest_car"
-                        android:layout_width="0dp"
+                        android:layout_width="130dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:minWidth="0dp"
-                        android:minHeight="0dp"
-                        android:paddingHorizontal="10dp"
-                        android:text="@string/button_fastest"
-                        android:textAllCaps="false"
-                        android:singleLine="false"
-                        android:lines="2"
-                        android:maxLines="2"
-                        android:ellipsize="none"
+                        android:ellipsize="end"
+                        android:fontFamily="@font/urbanist_semibold"
                         android:gravity="center"
-                        android:textAlignment="center"
                         android:includeFontPadding="false"
-                        android:textSize="14sp"
-                        app:cornerRadius="20dp"
-                        app:strokeWidth="0dp"
-                        app:rippleColor="@android:color/transparent"
-                        app:backgroundTint="@color/seg_btn_bg_teal"
-                        android:textColor="@color/seg_btn_text_teal"/>
-                </com.google.android.material.button.MaterialButtonToggleGroup>
+                        android:maxLines="1"
+                        android:singleLine="true"
+                        android:text="Fastest Car"
+                        android:textColor="@color/white"
+                        android:textSize="14sp" />
+                </LinearLayout>
             </FrameLayout>
+
         </LinearLayout>
 
         <!-- Hidden legacy ToggleButton to preserve logic -->
@@ -125,14 +129,14 @@
                 android:id="@+id/mapView"
                 android:layout_width="450dp"
                 android:layout_height="450dp"
-                android:layout_marginLeft="20dp"
+                android:layout_marginStart="20dp"
                 android:layout_marginTop="30dp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:layout_marginRight="25dp"
+                android:layout_marginEnd="25dp"
                 android:orientation="vertical">
 
                 <TextView
@@ -292,7 +296,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_marginLeft="10dp"
+                android:layout_marginStart="10dp"
                 android:layout_marginBottom="32dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -307,7 +311,7 @@
                     android:background="@drawable/rounded_button"
                     android:backgroundTint="@color/teal_dark"
                     android:fontFamily="@font/urbanist_semibold"
-                    android:text="Add/Edit Obstacle" />
+                    android:text="@string/add_edit_obstacle" />
 
                 <Button
                     android:id="@+id/button_reset"
@@ -335,6 +339,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
+                    android:layout_marginStart="10dp"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
@@ -367,6 +372,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
+                    android:layout_marginStart="10dp"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
