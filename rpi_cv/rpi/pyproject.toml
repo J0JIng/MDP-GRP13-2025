@@ -9,16 +9,9 @@ dependencies = [
   "pyyaml>=6.0.2",
   "requests>=2.32.5",
   "pybluez @ git+https://github.com/pybluez/pybluez.git",
-  "numpy==1.25.2",
-  "opencv-python-headless==4.7.0.72",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.4.1",
-]
-
-[project.optional-dependencies]
-rpi = [
-  "picamera",
 ]

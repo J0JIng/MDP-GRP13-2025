@@ -2,12 +2,10 @@ bluetooth:
   adapter: hci0 # Linux BT adapter (e.g., hci0)
   discoverable_cmd: "sudo hciconfig {adapter} piscan"
   service_name: "MDP-Group13-RPi" # Human-friendly label
-  # uuid: "8357ac59-b23b-4e2d-850e-560b6dd6fcb5" # Your fixed UUID (recommended)
-  uuid: "00001101-0000-1000-8000-00805F9B34FB"
+  uuid: "8357ac59-b23b-4e2d-850e-560b6dd6fcb5" # Your fixed UUID (recommended)
   # If you prefer the standard Serial Port Profile UUID instead of a custom one, set:
   # use_spp_uuid: true
   # spp_uuid: "8357ac59-b23b-4e2d-850e-560b6dd6fcb5"
   backlog: 1 # listen() backlog
   recv_bufsize: 1024 # bytes per recv() call
   newline_delimited: true # append '\n' when sending JSON
-  msg_log_max_size: 150 # this is in characters
