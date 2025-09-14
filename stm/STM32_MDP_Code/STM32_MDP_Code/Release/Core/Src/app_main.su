@@ -1,8 +1,10 @@
 ../Core/Src/app_main.cpp:97:6:void initializeCPPconstructs()	8	static
 ../Core/Src/app_main.cpp:131:6:void sensorIRTask(void*)	0	static
-../Core/Src/app_main.cpp:136:6:void sensorUSTask(void*)	8	static
-../Core/Src/app_main.cpp:157:6:void sensorIMUTaskInit()	128	static
-../Core/Src/app_main.cpp:253:6:void quaternionUpdate(float, float, float, float, float, float, float)	112	static
-../Core/Src/app_main.cpp:180:6:void sensorIMUTask(void*)	256	static
-../Core/Src/app_main.cpp:333:6:void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef*)	16	static
-../Core/Src/app_main.cpp:357:1:cpp)	8	static
+../Core/Src/app_main.cpp:143:6:void sensorUSTask(void*)	0	static
+../Core/Src/app_main.cpp:236:6:void quaternionUpdate(float, float, float, float, float, float, float)	112	static
+../Core/Src/app_main.cpp:161:6:void sensorIMUTask(void*)	176	static
+../Core/Src/app_main.cpp:309:6:void _ext_sig_halt()	0	static
+../Core/Src/app_main.cpp:313:6:void HAL_UART_RxCpltCallback(UART_HandleTypeDef*)	0	static
+../Core/Src/app_main.cpp:319:6:void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef*)	16	static
+../Core/Src/app_main.cpp:343:1:cpp)	16	static
+../Core/Src/app_main.cpp:343:1:cpp)	8	static

@@ -47,8 +47,8 @@ namespace AppMotion {
 			~Motor() {
 			}
 			;
-			bool setSpeed(uint32_t percent);
-			bool _setDutyCycleVal(uint32_t dc);
+			bool setSpeed(uint32_t percent, bool isFwd);
+			bool _setDutyCycleVal(uint32_t dc, bool isFwd);
 			void setForward(void);
 			void setBackward(void);
 			void halt(void);
@@ -79,9 +79,9 @@ namespace AppMotion {
 
 	class MotionController {
 
-		#define CENTER_POS_PWM 754  //150
-		#define LEFT_DELTA 21         // was 40 //50 /65
-		#define RIGHT_DELTA 9        // was 80 then 100 //100 /102
+		#define CENTER_POS_PWM 756
+		#define LEFT_DELTA 10         // was 10
+		#define RIGHT_DELTA 20        // was 10 then 15 20
 		#define LEFT_POS_PWM (CENTER_POS_PWM - RIGHT_DELTA)
 		#define RIGHT_POS_PWM (CENTER_POS_PWM + RIGHT_DELTA)
 

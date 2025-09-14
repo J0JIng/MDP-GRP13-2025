@@ -24,8 +24,9 @@ namespace Display {
 		OLED_ShowString(1, 37, (uint8_t*) "SENR");
 		OLED_ShowString(1, 49, (uint8_t*) "MOTN");
 		OLED_ShowString(60, 0, (uint8_t*) "gZ");
-		OLED_ShowString(60, 12, (uint8_t*) "TRX QL");
-		OLED_ShowString(60, 36, (uint8_t*) "YAW");
+		OLED_ShowString(60, 12, (uint8_t*) "YAW");
+		OLED_ShowString(60, 36, (uint8_t*) "uS");
+		OLED_ShowString(60, 48, (uint8_t*) "TRX QL");
 		OLED_Refresh_Gram();
 		bool self = false;
 		uint8_t buf[10] = { 0 };
@@ -48,19 +49,23 @@ namespace Display {
 			}
 
 			memset(&buf, 0, sizeof(buf));
-			snprintf((char*) buf, sizeof(buf), "%d", sensor_data.ql);
-			OLED_ShowString(115, 12, (uint8_t*) &buf);
+			snprintf((char*) buf, sizeof(buf), "%4.1f", sensor_data.yaw_abs);
+			OLED_ShowString(85, 12, (uint8_t*) &buf);
 
 			memset(&buf, 0, sizeof(buf));
 			snprintf((char*) buf, sizeof(buf), "%3.0f::%3.0f", sensor_data.ir_distL, sensor_data.ir_distR);
 			OLED_ShowString(65, 24, (uint8_t*) &buf);
 
 			memset(&buf, 0, sizeof(buf));
-			snprintf((char*) buf, sizeof(buf), "%4.1f", sensor_data.yaw_abs);
+			snprintf((char*) buf, sizeof(buf), "%4.2f", sensor_data.usonic_dist);
 			OLED_ShowString(85, 36, (uint8_t*) &buf);
 
-			OLED_Refresh_Gram();
+			memset(&buf, 0, sizeof(buf));
+			snprintf((char*) buf, sizeof(buf), "%d", sensor_data.ql);
+			OLED_ShowString(115, 48, (uint8_t*) &buf);
 
+
+			OLED_Refresh_Gram();
 			self = !self;
 			memset((void*) &is_task_alive_struct, 0, sizeof(isTaskAlive_t));
 			osDelay(250);

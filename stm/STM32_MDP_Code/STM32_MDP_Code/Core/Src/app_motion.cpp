@@ -12,11 +12,9 @@
 
 namespace AppMotion {
 
-	#define ALPHA 0.8
-	#define REAR_WHEEL_RADIUS_CM 6.5/2
-	#define REAR_WHEEL_ROTATION_DISTANCE (2 * 3.142 * REAR_WHEEL_RADIUS_CM)
-	#define ENCODER_PULSES_PER_ROTATION 1560 * 1.045
-	#define DISTANCE_PER_ENCODER_PULSE (REAR_WHEEL_ROTATION_DISTANCE / ENCODER_PULSES_PER_ROTATION)
+	#define REAR_WHEEL_ROTATION_DISTANCE (3.142 * 6.5)
+	#define ENCODER_PULSES_PER_WHEEL_ROTATION (11.0 * 4.0 * 30.0)
+	#define DISTANCE_PER_ENCODER_PULSE (REAR_WHEEL_ROTATION_DISTANCE / ENCODER_PULSES_PER_WHEEL_ROTATION)
 
 	MotionController::MotionController(u_ctx *ctx) {
 		this->ctx = ctx;
@@ -33,29 +31,29 @@ namespace AppMotion {
 			CENTER_POS_PWM
 		);
 
-		//
-//		this->lencoder = new Encoder(
-//			&htim2,
-//			TIM_CHANNEL_ALL
-//		);
-//
-//		this->rencoder = new Encoder(
-//			&htim3,
-//			TIM_CHANNEL_ALL
-//		);
+
+		this->lencoder = new Encoder(
+			&htim2,
+			TIM_CHANNEL_ALL
+		);
+
+		this->rencoder = new Encoder(
+			&htim3,
+			TIM_CHANNEL_ALL
+		);
 
 		this->lmotor = new Motor(
 			&htim4,
 			TIM_CHANNEL_3,
 			TIM_CHANNEL_4,
-			2000
+			7000
 		);
 
 		this->rmotor = new Motor(
 			&htim9,
 			TIM_CHANNEL_1,
 			TIM_CHANNEL_2,
-			2000
+			7000
 		);
 
 		float pid_param_right[3] = {
@@ -72,6 +70,7 @@ namespace AppMotion {
 
 		PID_init(&this->left_pid, PID_POSITION, pid_param_right, 7500, 7500);
 		PID_init(&this->right_pid, PID_POSITION, pid_param_right, 7500, 7500);
+
 		PID_init(&this->sync_left_pid, 0, pid_param_sync, 1000, 1000);
 		PID_init(&this->sync_right_pid, 0, pid_param_sync, 1000, 1000);
 		emergency = false;
@@ -105,54 +104,42 @@ namespace AppMotion {
 
 
 		for (;;) {
-			osDelay(50);
 			is_task_alive_struct.motn = true;
-			servo->turnFront();
-			self->move(true, 1000, 35, true, true);
+
+//			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_8);
+
+			osDelay(50);
+			osThreadYield();
+
+			if (osMessageQueueGetCount(ctx->mailbox.queue) > 0) {
+				AppParser::MOTION_PKT_t pkt;
+				osMessageQueueGet(ctx->mailbox.queue, &pkt, 0, 5);
+				char buffer[20] = { 0 };
+				sprintf((char*) &buffer, "cmd:%ld, arg:%ld\r\n", (uint32_t) pkt.cmd, pkt.arg);
+				//HAL_UART_Transmit(&huart3, (uint8_t*) buffer, sizeof(buffer), 10);
 
 
-			//osThreadYield();
-//			if (osMessageQueueGetCount(ctx->mailbox.queue) > 0) {
-//				HAL_GPIO_WritePin(Movement_Ind_Port, Movement_Ind_Pin, GPIO_PIN_SET);
-//				AppParser::MOTION_PKT_t pkt;
-//				osMessageQueueGet(ctx->mailbox.queue, &pkt, 0, 5);
-//				char buffer[20] = { 0 };
-//				sprintf((char*) &buffer, "cmd:%ld, arg:%ld\r\n", (uint32_t) pkt.cmd,
-//						pkt.arg);
-//				//HAL_UART_Transmit(&huart3, (uint8_t*) buffer, sizeof(buffer), 10);
-//				if (pkt.cmd == AppParser::MOTION_CMD::MOVE_FWD) {
-//					servo->turnFront();
-//
-//					self->move(true, pkt.arg, 35, pkt.is_crawl, pkt.linear);
-//
-//				} else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_BWD) {
-//					servo->turnFront();
-//
-//					self->move(false, pkt.arg, 35, pkt.is_crawl, pkt.linear);
-//
-//				} else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_LEFT_FWD) {
-//					self->turn(false, true, pkt.linear, pkt.arg);
-//
-//				} else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_RIGHT_FWD)
-//					self->turn(true, true, pkt.linear, pkt.arg);
-//
-//				else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_LEFT_BWD) {
-//					self->turn(false, false, pkt.linear, pkt.arg);
-//
-//				} else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_RIGHT_BWD)
-//					self->turn(true, false, pkt.linear, pkt.arg);
-//
-//				else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_T2_S180R)
-//								self->task2ScanAndRot(pkt.turn_opt);
-//				else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_T2_S90R)
-//								self->task2ScanAndReturn(pkt.turn_opt);
-//				else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_T2_O1)
-//					self->task2ScanAndReturn(pkt.turn_opt);
-//
-//			}
-//			HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
-//			HAL_GPIO_WritePin(Movement_Ind_Port, Movement_Ind_Pin, GPIO_PIN_RESET);
+				if (pkt.cmd == AppParser::MOTION_CMD::MOVE_FWD) {
+					servo->turnFront();
+					self->move(true, pkt.arg, 35, pkt.is_crawl, pkt.linear);
 
+				} else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_BWD) {
+					servo->turnFront();
+					self->move(false, pkt.arg, 35, pkt.is_crawl, pkt.linear);
+
+				} else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_LEFT_FWD) {
+					self->turn(false, true, pkt.linear, pkt.arg);
+
+				} else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_RIGHT_FWD)
+					self->turn(true, true, pkt.linear, pkt.arg);
+
+				else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_LEFT_BWD) {
+					self->turn(false, false, pkt.linear, pkt.arg);
+
+				} else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_RIGHT_BWD){
+					self->turn(true, false, pkt.linear, pkt.arg);
+				}
+			}
 		}
 	}
 
@@ -162,13 +149,13 @@ namespace AppMotion {
 		servo->turnFront();
 		isFwd ? lmotor->setForward() : lmotor->setBackward();
 		isFwd ? rmotor->setForward() : rmotor->setBackward();
-		lmotor->setSpeed(speed);
-		rmotor->setSpeed(speed);
+		lmotor->setSpeed(speed, isFwd);
+		rmotor->setSpeed(speed, isFwd);
 
 		if (isCrawl)
 		{
-			lmotor->setSpeed(35);
-			rmotor->setSpeed(35);
+			lmotor->setSpeed(35, isFwd);
+			rmotor->setSpeed(35, isFwd);
 		}
 
 		uint32_t timeStart = HAL_GetTick();
@@ -178,8 +165,20 @@ namespace AppMotion {
 
 		double cur_left = 0, cur_right = 0;
 		float count_left = 0, count_right = 0;
+
+		sensor_data.target = target;
+		sensor_data.cur_left = cur_left;
+		sensor_data.cur_right = cur_right;
+
+//		 OLED_ShowString(0, 10, (uint8_t*)"Entered move()");
+//		 OLED_Refresh_Gram();
+
+
 		double speed_error = 0;
 		do {
+
+//    		OLED_ShowString(0, 20, (uint8_t*)"looping...");
+//			OLED_Refresh_Gram();
 
 			count_left = (double) lencoder->getDelta(l_encoder_count, lencoder->getCount());
 			count_right = (double) rencoder->getDelta(r_encoder_count, rencoder->getCount());
@@ -192,8 +191,8 @@ namespace AppMotion {
 
 				// Close to target check
 				if (cur_left > target - 2000 || cur_right > target - 2000) {
-					lmotor->setSpeed(map(target - cur_left, 2000, 330, 35, 15));
-					rmotor->setSpeed(map(target - cur_right, 2000, 330, 35, 15));
+					lmotor->setSpeed(map(target - cur_left, 2000, 330, 35, 15), isFwd);
+					rmotor->setSpeed(map(target - cur_right, 2000, 330, 35, 15), isFwd);
 				}
 
 				// Use PID
@@ -204,8 +203,8 @@ namespace AppMotion {
 					float pid_right_d = PID_calc(&this->sync_right_pid, -speed_error, 0);
 
 					// Update the speed
-					lmotor->_setDutyCycleVal((uint32_t) ((pid_left + pid_left_d) > 1000 ?(pid_left + pid_left_d) : 1000));
-					rmotor->_setDutyCycleVal((uint32_t) ((pid_right + pid_right_d) > 1000 ?(pid_right + pid_right_d) : 1000));
+					lmotor->_setDutyCycleVal((uint32_t) ((pid_left + pid_left_d) > 1000 ?(pid_left + pid_left_d) : 1000), isFwd);
+					rmotor->_setDutyCycleVal((uint32_t) ((pid_right + pid_right_d) > 1000 ?(pid_right + pid_right_d) : 1000), isFwd);
 				}
 			}
 
@@ -218,17 +217,27 @@ namespace AppMotion {
 				break;
 			}
 
-
 			osDelay(10);
 			sensor_data.last_halt_val = arg;
+			sensor_data.target = target;
+			sensor_data.cur_left = cur_left;
+			sensor_data.cur_right = cur_right;
+//			char buf[50];
+//			snprintf(buf, sizeof(buf), "L:%3.2f R:%3.2f T:%3.2f", cur_left, cur_right, target);
+//			OLED_ShowString(0, 30, (uint8_t*)buf);
+//			OLED_Refresh_Gram();
 			osThreadYield();
 
 		} while (1);
 
-		uint8_t buf[10] = { 0 };
-		snprintf((char*) buf, sizeof(buf), "%4.0f", cur_left - cur_right);
-		OLED_ShowString(85, 48, (uint8_t*) &buf);
-		OLED_Refresh_Gram();
+//	    OLED_ShowString(0, 50, (uint8_t*)"Exiting move()");
+//		OLED_Refresh_Gram();
+//		OLED_Clear();
+
+//		uint8_t buf[10] = { 0 };
+//		snprintf((char*) buf, sizeof(buf), "%4.0f", cur_left - cur_right);
+//		OLED_ShowString(85, 60, (uint8_t*) &buf);
+//		OLED_Refresh_Gram();
 		emergency = false;
 		lmotor->halt();
 		rmotor->halt();
@@ -238,14 +247,15 @@ namespace AppMotion {
 		emergency = false;
 		isRight ? servo->turnRight() : servo->turnLeft();
 
-		isFwd ? lmotor->setForward() : lmotor->setBackward();
-		isFwd ? rmotor->setForward() : rmotor->setBackward();
-		isRight ? lmotor->setSpeed(51) : lmotor->setSpeed(11);
-		isRight ? rmotor->setSpeed(11) : rmotor->setSpeed(51);
+//		isFwd ? lmotor->setForward() : lmotor->setBackward();
+//		isFwd ? rmotor->setForward() : rmotor->setBackward();
+		isRight ? lmotor->setSpeed(51, isFwd) : lmotor->setSpeed(11, isFwd);
+		isRight ? rmotor->setSpeed(11, isFwd) : rmotor->setSpeed(51, isFwd);
+
 		if(arc) // arc increases turn radius
 		{
-			isRight ? lmotor->setSpeed(55) : lmotor->setSpeed(20);
-			isRight ? rmotor->setSpeed(20) : rmotor->setSpeed(55);
+			isRight ? lmotor->setSpeed(55, isFwd) : lmotor->setSpeed(20, isFwd);
+			isRight ? rmotor->setSpeed(20, isFwd) : rmotor->setSpeed(55, isFwd);
 		}
 		uint32_t timeNow = HAL_GetTick();
 		uint32_t timeStart = timeNow;
@@ -270,15 +280,15 @@ namespace AppMotion {
 
 		do{
 			if (abs(target_yaw - cur) < 45 ) {
-				if(isRight) lmotor->setSpeed((uint32_t)map(abs(target_yaw - cur), 45, 0, 30, 15));
+				if(isRight) lmotor->setSpeed((uint32_t)map(abs(target_yaw - cur), 45, 0, 30, 15), isFwd);
 
-				else rmotor->setSpeed((uint32_t)map(abs(target_yaw - cur), 45, 0, 30, 15));
+				else rmotor->setSpeed((uint32_t)map(abs(target_yaw - cur), 45, 0, 30, 15), isFwd);
 			}
 			else if(fmod(abs(abs(target_yaw) - abs(cur)), 180) < 45 )
 			{
-				if(isRight) lmotor->setSpeed((uint32_t)map(fmod(abs(abs(target_yaw) - abs(cur)), 180), 45, 0, 30, 15));
+				if(isRight) lmotor->setSpeed((uint32_t)map(fmod(abs(abs(target_yaw) - abs(cur)), 180), 45, 0, 30, 15), isFwd);
 
-				else rmotor->setSpeed((uint32_t)map(fmod(abs(abs(target_yaw) - abs(cur)), 180), 45, 0, 30, 15));
+				else rmotor->setSpeed((uint32_t)map(fmod(abs(abs(target_yaw) - abs(cur)), 180), 45, 0, 30, 15), isFwd);
 			}
 
 			timeNow = HAL_GetTick();
@@ -371,20 +381,38 @@ namespace AppMotion {
 		HAL_TIM_PWM_Start(ctrl, channelB);
 	}
 
-	bool Motor::setSpeed(uint32_t percent) {
+	bool Motor::setSpeed(uint32_t percent, bool isFwd) {
 		if (percent > 100){
 			return false;
 		}
 		uint32_t value = this->max_period / 100 * percent;
 		this->cur_value = value;
+
+		if (isFwd){
+			__HAL_TIM_SetCompare(this->htimer, this->channelA, value);
+			__HAL_TIM_SetCompare(this->htimer, this->channelB, 1);
+		} else {
+			__HAL_TIM_SetCompare(this->htimer, this->channelA, 1);
+			__HAL_TIM_SetCompare(this->htimer, this->channelB, value);
+		}
+
 		return true;
 	}
 
-	bool Motor::_setDutyCycleVal(uint32_t dc) {
+	bool Motor::_setDutyCycleVal(uint32_t dc, bool isFwd) {
 		if (dc > this->max_period){
 			return false;
 		}
 		this->cur_value = dc;
+
+		if (isFwd){
+			__HAL_TIM_SetCompare(this->htimer, this->channelA, dc);
+			__HAL_TIM_SetCompare(this->htimer, this->channelB, 1);
+		} else {
+			__HAL_TIM_SetCompare(this->htimer, this->channelA, 1);
+			__HAL_TIM_SetCompare(this->htimer, this->channelB, dc);
+		}
+
 		return true;
 	}
 
@@ -394,13 +422,13 @@ namespace AppMotion {
 	}
 
 	void Motor::setForward() {
-	__HAL_TIM_SetCompare(this->htimer, this->channelA, 1);
-	__HAL_TIM_SetCompare(this->htimer, this->channelB, this->cur_value);
+		__HAL_TIM_SetCompare(this->htimer, this->channelA, this->max_period);
+		__HAL_TIM_SetCompare(this->htimer, this->channelB, 1);
 	}
 
 	void Motor::setBackward() {
-	__HAL_TIM_SetCompare(this->htimer, this->channelA, this->cur_value);
-	__HAL_TIM_SetCompare(this->htimer, this->channelB, 1);
+		__HAL_TIM_SetCompare(this->htimer, this->channelA, 1);
+		__HAL_TIM_SetCompare(this->htimer, this->channelB, this->max_period);
 	}
 
 
