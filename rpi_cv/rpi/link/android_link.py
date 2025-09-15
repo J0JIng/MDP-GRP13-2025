@@ -12,10 +12,10 @@ class AndroidLink(Link):
     ## General Format
     Messages between the Android app and Raspi will be in the following format:
     ```json
-    {"cat": "xxx", "value": "xxx"}
+    {"type": "XXX", "data": ...}
     ```
 
-    The `cat` (for category) field with the following possible values:
+    The `type` field (logical category) has the following possible values:
     - `info`: general messages
     - `error`: error messages, usually in response of an invalid action
     - `location`: the current location of the robot (in Path mode)
@@ -29,38 +29,38 @@ class AndroidLink(Link):
     #### Set Obstacles
     The contents of `obstacles` together with the configured turning radius (`settings.py`) will be passed to the Algorithm API.
     ```json
-    {
-    "cat": "obstacles",
-    "value": {
-        "obstacles": [{"x": 5, "y": 10, "id": 1, "d": 2}],
-        "mode": "0"
-    }
-    }
+        {
+            "type": "obstacles",
+            "data": {
+                "obstacles": [{"x": 5, "y": 10, "id": 1, "d": 2}],
+                "mode": "0"
+            }
+        }
     ```
     RPi will store the received commands and path and make a call to the Algorithm API
 
     ### Start
     Signals to the robot to start dispatching the commands (when obstacles were set).
     ```json
-    {"cat": "control", "value": "start"}
+    {"type": "control", "data": "start"}
     ```
 
     If there are no commands in the queue, the RPi will respond with an error:
     ```json
-    {"cat": "error", "value": "Command queue is empty, did you set obstacles?"}
+    {"type": "error", "data": "Command queue is empty, did you set obstacles?"}
     ```
 
     ### Image Recognition 
 
     #### RPi to Android
     ```json
-    {"cat": "image-rec", "value": {"image_id": "A", "obstacle_id":  "1"}}
+    {"type": "IMAGE_RESULTS", "data": {"image_id": "A", "obstacle_id":  "1"}}
     ```
 
     ### Location Updates (RPi to Android)
     In Path mode, the robot will periodically notify Android with the updated location of the robot.
     ```json
-    {"cat": "location", "value": {"x": 1, "y": 1, "d": 0}}
+    {"type": "COORDINATES", "data": {"x": 1, "y": 1, "d": 0}}
     ```
     where `x`, `y` is the location of the robot, and `d` is its direction.
     """

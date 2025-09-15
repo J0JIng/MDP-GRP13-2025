@@ -68,9 +68,9 @@ def test_android_link_send_and_recv(monkeypatch):
     assert fake.sent[0].decode("utf-8").endswith("\n")
 
     # Test recv path
-    fake.queue_recv(b'{"cat": "info", "value": "hello"}\n')
+    fake.queue_recv(b'{"type": "info", "data": "hello"}\n')
     received = link.recv()
-    assert received == '{"cat": "info", "value": "hello"}'
+    assert received == '{"type": "info", "data": "hello"}'
 
 
 def test_stm_link_send_and_recv(monkeypatch):

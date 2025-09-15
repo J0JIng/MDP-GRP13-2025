@@ -1,3 +1,4 @@
 api:
-  ip: 192.168.13.13
-  port: 5000
+  pc_ip: 192.168.13.13
+  algo_port: 5000
+  image_port: 6000

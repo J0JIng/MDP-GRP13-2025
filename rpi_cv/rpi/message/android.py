@@ -1,7 +1,12 @@
 import json
 from typing import Any, Final, Literal, cast
 
-Category = Literal["info", "error", "location", "image-rec", "mode", "status", "obstacle"]
+Category = Literal[
+    # Legacy/lowercase categories still used internally/logging
+    "info", "error", "location", "image-rec", "mode", "status", "obstacle",
+    # Android-app expected uppercase message types we send out
+    "COORDINATES", "IMAGE_RESULTS", "PATH"
+]
 
 INFO: Final[Category] = "info"
 ERROR: Final[Category] = "error"
@@ -11,13 +16,17 @@ MODE: Final[Category] = "mode"
 STATUS: Final[Category] = "status"
 OBSTACLE: Final[Category] = "obstacle"
 
-_ALLOWED: set[Category] = {INFO, ERROR, LOCATION, IMAGE_REC, MODE, STATUS, OBSTACLE}
+_ALLOWED: set[Category] = {INFO, ERROR, LOCATION, IMAGE_REC, MODE, STATUS, OBSTACLE,
+                           "COORDINATES", "IMAGE_RESULTS", "PATH"}
 
 
 class AndroidMessage:
     """
     Class representing a message to/from the Android app.
-    cat must be one of: "info", "error", "location", "image-rec", "mode", "status", "obstacle".
+
+    NOTE: Wire format updated to use keys {"type", "data"} to match Android.
+    The logical category names remain the same: "info", "error", "location",
+    "image-rec", "mode", "status", "obstacle".
     """
 
     def __init__(self, cat: Category, value: Any):
@@ -37,4 +46,5 @@ class AndroidMessage:
 
     @property
     def jsonify(self) -> str:
-        return json.dumps({"cat": self._cat, "value": self._value})
+        """Serialize to JSON string using the Android-preferred schema."""
+        return json.dumps({"type": self._cat, "data": self._value})
