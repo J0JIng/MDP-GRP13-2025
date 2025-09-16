@@ -153,7 +153,12 @@ class RaspberryPi:
 
     def recv_android(self) -> None:
         """
-        [Child Process] Processes the messages received from Android
+        [Child Process] Processes messages received from Android.
+        Android -> RPi supported message types:
+          - START_TASK: { type, data: { task, robot, obstacles[] } }
+          - FASTEST_PATH: { type, data: { task, robot, obstacles[] } }
+          - NAVIGATION: { type, data: { commands: [..] } }
+        Legacy formats are no longer accepted.
         """
         while True:
             msg_str: Optional[str] = None
@@ -166,26 +171,26 @@ class RaspberryPi:
             if msg_str is None:
                 continue
 
-            message: dict = json.loads(msg_str)
+            try:
+                message: dict = json.loads(msg_str)
+            except Exception:
+                self.logger.warning("Invalid JSON from Android: %r", msg_str)
+                continue
 
-            # Accept new schema {"type","data"}; fallback to legacy {"cat","value"}
-            mtype = message.get("type", message.get("cat"))
-            mdata = message.get("data", message.get("value"))
+            mtype = message.get("type")
+            mdata = message.get("data")
 
-            ## Command: Set obstacles ##
-            if mtype == "obstacles":
-                # Normalize into PiAction(cat, value)
-                self.rpi_action_queue.put(PiAction(cat="obstacles", value=mdata))
-                self.logger.debug(
-                    f"Set obstacles PiAction added to queue: type={mtype} data={mdata}")
+            if not mtype:
+                self.logger.warning("Android message missing 'type': %r", message)
+                continue
 
-            # Android START_TASK or FASTEST_PATH -> normalize to obstacles + mode
-            elif mtype in ("START_TASK", "FASTEST_PATH"):
+            # START_TASK / FASTEST_PATH: normalize to algo payload and queue
+            if mtype in ("START_TASK", "FASTEST_PATH"):
                 try:
                     data = mdata or {}
                     raw_obstacles = data.get("obstacles", [])
-                    # Convert Android obstacle shape {id: str, x:int, y:int, dir: "N|E|S|W"}
-                    # to RPi/Algo expected {id:int, x:int, y:int, d:int}
+
+                    # Convert Android obstacle shape {id: str/int, x:int, y:int, dir: 'N'|'E'|'S'|'W'}
                     converted = []
                     for o in raw_obstacles:
                         d_char = str(o.get("dir", "N")).upper()
@@ -196,12 +201,16 @@ class RaspberryPi:
                             "y": int(o.get("y")),
                             "d": d_int,
                         })
-                    # Default mode "0" unless provided
-                    value = {"obstacles": converted, "mode": str(data.get("mode", "0"))}
 
-                    # Queue action for requester thread to call algo
+                    # Map task/type to mode expected by algo: 0=exploration, 1=fastest path
+                    task = str(data.get("task", "")).upper()
+                    mode = "1" if (mtype == "FASTEST_PATH" or task == "FASTEST_PATH") else "0"
+
+                    value = {"obstacles": converted, "mode": mode}
+
+                    # Queue action for algo request
                     self.rpi_action_queue.put(PiAction(cat="obstacles", value=value))
-                    self.logger.debug("Normalized START_TASK/FASTEST_PATH to obstacles payload: %s", value)
+                    self.logger.debug("Enqueued obstacles/mode from %s: %s", mtype, value)
 
                     # Optionally set current robot location if provided
                     robot = data.get("robot")
@@ -213,47 +222,30 @@ class RaspberryPi:
                         except Exception:
                             pass
                 except Exception as e:
-                    self.logger.error("Failed to parse START_TASK/FASTEST_PATH: %s", e)
+                    self.logger.error("Failed to handle %s: %s", mtype, e)
 
-            # Android manual navigation commands
+            # Manual navigation commands
             elif mtype == "NAVIGATION":
                 try:
                     commands = (mdata or {}).get("commands", [])
                     if isinstance(commands, list):
                         self.clear_queues()
                         for c in commands:
-                            self.command_queue.put(str(c))
+                            # Normalize Android command prefixes to STM32 format
+                            c = str(c)
+                            if len(c) >= 2:
+                                pfx, rest = c[:2], c[2:]
+                                map_pfx = {"SF": "FS", "SB": "BS", "LF": "TL", "RF": "TR"}
+                                c = map_pfx.get(pfx, pfx) + rest
+                            self.command_queue.put(c)
                         self.android_queue.put(AndroidMessage('info', 'Manual commands enqueued.'))
                     else:
                         self.logger.warning("NAVIGATION commands not a list: %r", commands)
                 except Exception as e:
                     self.logger.error("Failed to handle NAVIGATION: %s", e)
 
-            ## Command: Start Moving ##
-            elif mtype == "control":
-                if mdata == "start":
-                    # Check API
-                    if not self.check_api():
-                        self.logger.error(
-                            "API is down! Start command aborted.")
-                        self.android_queue.put(AndroidMessage(
-                            'error', "API is down, start command aborted."))
-
-                    # Commencing path following
-                    if not self.command_queue.empty():
-                        self.logger.info("Gryo reset!")
-                        self.stm_link.send("RS00")
-                        # Main trigger to start movement #
-                        self.unpause.set()
-                        self.logger.info(
-                            "Start command received, starting robot on path!")
-                        self.android_queue.put(AndroidMessage('info', 'Starting robot on path!'))
-                        self.android_queue.put(AndroidMessage('status', 'running'))
-                    else:
-                        self.logger.warning(
-                            "The command queue is empty, please set obstacles.")
-                        self.android_queue.put(AndroidMessage(
-                            "error", "Command queue is empty, did you set obstacles?"))
+            else:
+                self.logger.warning("Unknown Android message type: %s", mtype)
 
     def recv_stm(self) -> None:
         """
@@ -291,13 +283,13 @@ class RaspberryPi:
                     # Android expects type "COORDINATES" with nested robot object
                     # and direction as a cardinal string (N/E/S/W)
                     dir_char = DIR_INT_TO_CHAR.get(int(cur_location['d']), 'N')
-                    self.android_queue.put(AndroidMessage('COORDINATES', {
-                        "robot": {
-                            "x": cur_location['x'],
-                            "y": cur_location['y'],
-                            "dir": dir_char,
-                        }
-                    }))
+                    self.android_queue.put(
+                        AndroidMessage.coordinates(
+                            x=int(cur_location['x']),
+                            y=int(cur_location['y']),
+                            dir=dir_char,
+                        )
+                    )
 
                 except Exception:
                     self.logger.warning("Tried to release a released lock!")
@@ -403,7 +395,14 @@ class RaspberryPi:
             if action.cat == "obstacles":
                 for obs in action.value['obstacles']:
                     self.obstacles[obs['id']] = obs
-                self.request_algo(action.value)
+                # Use current robot pose if available
+                try:
+                    rx = int(self.current_location.get('x', 1))
+                    ry = int(self.current_location.get('y', 1))
+                    rd = int(self.current_location.get('d', 0))
+                except Exception:
+                    rx, ry, rd = 1, 1, 0
+                self.request_algo(action.value, robot_x=rx, robot_y=ry, robot_dir=rd)
             elif action.cat == "snap":
                 self.snap_and_rec(obstacle_id_with_signal=action.value)
             elif action.cat == "stitch":
@@ -416,13 +415,13 @@ class RaspberryPi:
         :param obstacle_id_with_signal: the current obstacle ID followed by underscore followed by signal
         """
         API_IP = self.config['api']['ip']
-        API_PORT = self.config['api']['port']
+        IMAGE_API_PORT = self.config['api']['image_port']
 
         obstacle_id, signal = obstacle_id_with_signal.split("_")
         self.logger.info(f"Capturing image for obstacle id: {obstacle_id}")
         self.android_queue.put(AndroidMessage(
             "info", f"Capturing image for obstacle id: {obstacle_id}"))
-        url = f"http://{API_IP}:{API_PORT}/image"
+        url = f"http://{API_IP}:{IMAGE_API_PORT}/image"
         filename = f"{int(time.time())}_{obstacle_id}_{signal}.jpg"
 
         con_file = "PiLCConfig9.txt"
@@ -549,12 +548,13 @@ class RaspberryPi:
                 self.obstacles[int(results['obstacle_id'])])
             self.logger.info(
                 f"self.success_obstacles: {self.success_obstacles}")
-        # Convert to Android-expected keys
-        android_results = {
-            "obs_id": str(results.get("obstacle_id")),
-            "img_id": str(results.get("image_id")),
-        }
-        self.android_queue.put(AndroidMessage("IMAGE_RESULTS", android_results))
+        # Send image results using Android message factory (consistent schema)
+        self.android_queue.put(
+            AndroidMessage.image_results(
+                obs_id=str(results.get("obstacle_id")),
+                img_id=str(results.get("image_id")),
+            )
+        )
 
     def request_algo(self, data, robot_x=1, robot_y=1, robot_dir=0, retrying=False):
         """
@@ -563,28 +563,93 @@ class RaspberryPi:
         """
         API_IP = self.config['api']['ip']
         ALGO_API_PORT = self.config['api']['algo_port']
+        timeouts = (self.config.get('api', {}) or {}).get('timeouts', {})
+        algo_timeout = int(timeouts.get('algo', 3))
 
         self.logger.info("Requesting path from algo...")
         self.android_queue.put(AndroidMessage(
             "info", "Requesting path from algo..."))
         self.logger.info(f"data: {data}")
-        body = {**data, "big_turn": "0", "robot_x": robot_x,
-                "robot_y": robot_y, "robot_dir": robot_dir, "retrying": retrying}
+        # Keep mode/big_turn for forward compatibility, though current server ignores them
+        body = {
+            **data,
+            "big_turn": 0,
+            "robot_x": int(robot_x),
+            "robot_y": int(robot_y),
+            "robot_dir": int(robot_dir),
+            "retrying": bool(retrying),
+        }
         url = f"http://{API_IP}:{ALGO_API_PORT}/path"
-        response = requests.post(url, json=body)
+        # Two-attempt retry for transient errors
+        response = None
+        for attempt in range(1, 3):
+            try:
+                response = requests.post(url, json=body, timeout=algo_timeout)
+                break
+            except requests.exceptions.Timeout:
+                self.logger.warning("Algo API timeout (attempt %d/2) to %s", attempt, url)
+                if attempt == 2:
+                    self.android_queue.put(AndroidMessage(
+                        "error", "Algo API timeout while requesting path."))
+                    return
+            except requests.exceptions.ConnectionError:
+                self.logger.warning("Algo API connection error (attempt %d/2) to %s", attempt, url)
+                if attempt == 2:
+                    self.android_queue.put(AndroidMessage(
+                        "error", "Algo API connection error while requesting path."))
+                    return
+            except Exception as e:
+                self.logger.warning("Algo API unexpected error (attempt %d/2): %s", attempt, e)
+                if attempt == 2:
+                    self.android_queue.put(AndroidMessage(
+                        "error", "Unexpected error contacting Algo API."))
+                    self.logger.exception("Unexpected error POSTing to Algo API: %s", e)
+                    return
 
         # Error encountered at the server, return early
-        if response.status_code != 200:
+        if response is None:
             self.android_queue.put(AndroidMessage(
-                "error", "Something went wrong when requesting path from Algo API."))
+                "error", "Algo API request did not complete."))
+            self.logger.error("Algo API request did not complete (no response object).")
+            return
+        if response.status_code != 200:
+            # Try to include brief details for troubleshooting
+            err_snip = None
+            try:
+                err_snip = response.text[:300]
+            except Exception:
+                pass
+            self.android_queue.put(AndroidMessage(
+                "error", "Algo API returned a non-200 status for path request."))
             self.logger.error(
-                "Something went wrong when requesting path from Algo API.")
+                "Algo API path request failed: status=%s body_snip=%r", response.status_code, err_snip)
             return
 
         # Parse response
-        result = json.loads(response.content)['data']
-        commands = result['commands']
-        path = result['path']
+        try:
+            payload = response.json()
+        except ValueError:
+            self.android_queue.put(AndroidMessage(
+                "error", "Algo API response was not valid JSON."))
+            self.logger.error("Algo API response not JSON: %r",
+                              response.text[:300] if hasattr(response, 'text') else None)
+            return
+
+        data_node = payload.get('data') if isinstance(payload, dict) else None
+        if not isinstance(data_node, dict):
+            self.android_queue.put(AndroidMessage(
+                "error", "Algo API response missing 'data' object."))
+            self.logger.error("Algo API response missing 'data': %r", payload)
+            return
+
+        commands = data_node.get('commands', [])
+        path = data_node.get('path', [])
+
+        if not isinstance(commands, list) or not isinstance(path, list):
+            self.android_queue.put(AndroidMessage(
+                "error", "Algo API response had invalid 'commands' or 'path' types."))
+            self.logger.error("Algo API invalid shapes: commands=%r path=%r", type(commands), type(path))
+            return
 
         # Log commands received
         self.logger.debug(f"Commands received from API: {commands}")
@@ -592,13 +657,45 @@ class RaspberryPi:
         # Put commands and paths into respective queues
         self.clear_queues()
         for c in commands:
-            self.command_queue.put(c)
+            try:
+                self.command_queue.put(str(c))
+            except Exception:
+                self.logger.warning("Skipped invalid command value: %r", c)
         for p in path[1:]:  # ignore first element as it is the starting position of the robot
-            self.path_queue.put(p)
+            try:
+                if isinstance(p, dict) and 'x' in p and 'y' in p and 'd' in p:
+                    self.path_queue.put({
+                        'x': int(p['x']),
+                        'y': int(p['y']),
+                        'd': int(p['d']),
+                    })
+                elif isinstance(p, (list, tuple)):
+                    # Accept [x,y] or [x,y,d]
+                    x = int(p[0])
+                    y = int(p[1])
+                    d = int(p[2]) if len(p) > 2 and p[2] is not None else 0
+                    self.path_queue.put({'x': x, 'y': y, 'd': d})
+                else:
+                    self.logger.warning("Skipped invalid path entry: %r", p)
+            except Exception:
+                self.logger.warning("Failed to normalize path entry: %r", p)
 
         # Also notify Android with the full path in the format it expects
+        # Android expects a list of [x, y] pairs, not dicts or direction info
         try:
-            self.android_queue.put(AndroidMessage("PATH", {"path": path}))
+            def _to_pair(p):
+                # Support either dicts {x,y,(d)} or already-formed [x,y]
+                if isinstance(p, dict):
+                    if 'x' in p and 'y' in p and p['x'] is not None and p['y'] is not None:
+                        return [int(p['x']), int(p['y'])]
+                    return None
+                if isinstance(p, (list, tuple)) and len(p) >= 2 and p[0] is not None and p[1] is not None:
+                    return [int(p[0]), int(p[1])]
+                # Fallback: skip unknown shapes
+                return None
+
+            path_pairs = [pair for pair in (_to_pair(p) for p in path) if pair is not None]
+            self.android_queue.put(AndroidMessage.path(path_pairs))
         except Exception:
             pass
 
@@ -607,15 +704,56 @@ class RaspberryPi:
         self.logger.info(
             "Commands and path received Algo API. Robot is ready to move.")
 
+        # Auto-start movement if we have commands
+        try:
+            if not self.command_queue.empty():
+                self.logger.info("Gyro reset! (auto-start)")
+                self.stm_link.send("RS00")
+                self.unpause.set()
+                self.android_queue.put(AndroidMessage('status', 'running'))
+        except Exception:
+            pass
+
     def request_stitch(self):
         """Sends a stitch request to the image recognition API to stitch the different images together"""
         API_IP = self.config['api']['ip']
         IMAGE_API_PORT = self.config['api']['image_port']
+        timeouts = (self.config.get('api', {}) or {}).get('timeouts', {})
+        image_timeout = int(timeouts.get('image', 3))
 
         url = f"http://{API_IP}:{IMAGE_API_PORT}/stitch"
-        response = requests.get(url)
+        # Two-attempt retry for transient errors
+        response = None
+        for attempt in range(1, 3):
+            try:
+                response = requests.get(url, timeout=image_timeout)
+                break
+            except requests.exceptions.Timeout:
+                self.logger.warning("Image API timeout (attempt %d/2) to %s", attempt, url)
+                if attempt == 2:
+                    self.android_queue.put(AndroidMessage(
+                        "error", "Image API timeout while requesting stitch."))
+                    return
+            except requests.exceptions.ConnectionError:
+                self.logger.warning("Image API connection error (attempt %d/2) to %s", attempt, url)
+                if attempt == 2:
+                    self.android_queue.put(AndroidMessage(
+                        "error", "Image API connection error while requesting stitch."))
+                    return
+            except Exception as e:
+                self.logger.warning("Image API unexpected error (attempt %d/2): %s", attempt, e)
+                if attempt == 2:
+                    self.android_queue.put(AndroidMessage(
+                        "error", "Unexpected error contacting Image API for stitch."))
+                    self.logger.exception("Unexpected error GETting stitch: %s", e)
+                    return
 
         # If error, then log, and send error to Android
+        if response is None:
+            self.android_queue.put(AndroidMessage(
+                "error", "Image API request did not complete for stitch."))
+            self.logger.error("Image API stitch request did not complete (no response object).")
+            return
         if response.status_code != 200:
             # Notify android
             self.android_queue.put(AndroidMessage(
