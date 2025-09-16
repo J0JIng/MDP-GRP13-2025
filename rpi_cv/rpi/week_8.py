@@ -635,30 +635,33 @@ class RaspberryPi:
             self.path_queue.get()
 
     def check_api(self) -> bool:
-        """Check whether image recognition and algorithm API server is up and running
-
+        """Check whether both image recognition and algorithm API servers are up.
         Returns:
-            bool: True if running, False if not.
+            bool: True if both running, False otherwise.
         """
-        # TODO: change this
         API_IP = self.config['api']['ip']
-        API_PORT = self.config['api']['port']
+        IMAGE_API_PORT = self.config['api']['image_port']
+        ALGO_API_PORT = self.config['api']['algo_port']
 
-        # Check image recognition API
-        url = f"http://{API_IP}:{API_PORT}/status"
-        try:
-            response = requests.get(url, timeout=1)
-            if response.status_code == 200:
-                self.logger.debug("API is up!")
-                return True
-            return False
-        # If error, then log, and return False
-        except ConnectionError:
-            self.logger.warning("API Connection Error")
-            return False
-        except requests.Timeout:
-            self.logger.warning("API Timeout")
-            return False
-        except Exception as e:
-            self.logger.warning(f"API Exception: {e}")
-            return False
+        def probe(url: str, name: str) -> bool:
+            try:
+                resp = requests.get(url, timeout=1)
+                if resp.status_code == 200:
+                    self.logger.debug(f"{name} API is up!")
+                    return True
+                self.logger.warning(f"{name} API unhealthy, status={resp.status_code}")
+                return False
+            except requests.exceptions.ConnectionError:
+                self.logger.warning(f"{name} API Connection Error")
+                return False
+            except requests.exceptions.Timeout:
+                self.logger.warning(f"{name} API Timeout")
+                return False
+            except Exception as e:
+                self.logger.warning(f"{name} API Exception: {e}")
+                return False
+
+        image_ok = probe(f"http://{API_IP}:{IMAGE_API_PORT}/status", "Image")
+        algo_ok = probe(f"http://{API_IP}:{ALGO_API_PORT}/status", "Algo")
+
+        return image_ok and algo_ok
