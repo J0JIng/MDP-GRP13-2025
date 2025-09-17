@@ -53,7 +53,7 @@ def take_photo(filename: str) -> str:
         "-hf",
         "-q 100",
         "-sh 40",
-        "-ISO 100"
+        "-ISO 100",
         "-awb auto",
         "-ss 20000",
         "-br 50",
