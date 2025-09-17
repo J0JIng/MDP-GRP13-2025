@@ -51,6 +51,7 @@ def take_photo(filename: str) -> str:
         "-t",
         "500",
         "-vf",
+        "-hf",
         "-o",
         filename,
     ]
