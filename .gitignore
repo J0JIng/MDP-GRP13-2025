@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 *.pyo
 venv/
+
+rpi_cv/cv/main_own.py
+rpi_cv/cv/model.py
+
+
