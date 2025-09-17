@@ -9,7 +9,8 @@ def main():
     android_link = AndroidLink()
     android_link.connect()
 
-    msg = AndroidMessage(cat="info", value="Hello from RPi!")
+    # msg = AndroidMessage(cat="info", value="Hello from RPi!")
+    msg = AndroidMessage.image_results(obs_id="1", img_id="24")
     android_link.send(msg)
     recv = android_link.recv()  # Just to clear the buffer
     print(f"Received: {recv}")
