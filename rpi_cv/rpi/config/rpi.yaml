@@ -1,3 +1,8 @@
 api:
-  ip: 192.168.13.13
-  port: 5000
+  pc_ip: 192.168.13.13
+  algo_port: 5000
+  image_port: 5001
+  # Timeouts (seconds) for outbound HTTP calls from RPi
+  timeouts:
+    algo: 3   # /path requests to algorithm server
+    image: 3  # /stitch and /image requests to image server
