@@ -45,23 +45,21 @@ def take_photo(filename: str) -> str:
     """
     cmd = [
         "raspistill",
-        "-e",
-        "jpg",
+        "-e", "jpg",
         "-n",
-        "-t 500",
-        "-vf",
-        "-hf",
-        "-q 100",
-        "-sh 40",
-        "-ISO 100",
-        "-awb auto",
-        "-ss 20000",
-        "-br 50",
-        "-co 10",
-        "-sa 10",
-        "-o",
-        filename,
+        "-t", "500",
+        "-vf", "-hf",
+        "-q", "100",
+        "-sh", "40",
+        "-ISO", "100",
+        "-awb", "auto",
+        "-ss", "20000",
+        "-br", "50",
+        "-co", "10",
+        "-sa", "10",
+        "-o", filename,
     ]
+
     subprocess.run(cmd, check=True)
     return filename
 
