@@ -16,10 +16,12 @@ from ultralytics import YOLO
 for d in ["uploads", "runs", os.path.join("runs", "originals"), "own_results"]:
     os.makedirs(d, exist_ok=True)
 
+
 def get_random_string(length):
     return ''.join(random.choice(string.ascii_letters) for _ in range(length))
 
-def load_model(weights_path="C:/Users/keith/OneDrive/Desktop/MDP/MDP-GRP13-2025/rpi_cv/cv/weights/detectionv1.pt", device=None):
+
+def load_model(weights_path="./weights/detectionv1.pt", device=None):
     """
     Load a YOLOv8/YOLOv12 model from ultralytics.
     - weights_path: path to your .pt (e.g., 'best.pt', 'yolov8n.pt', 'Week_9.pt')
@@ -33,7 +35,8 @@ def load_model(weights_path="C:/Users/keith/OneDrive/Desktop/MDP/MDP-GRP13-2025/
     model.to(device)
     return model
 
-def draw_own_bbox(img, x1, y1, x2, y2, label, color=(36,255,12), text_color=(0,0,0)):
+
+def draw_own_bbox(img, x1, y1, x2, y2, label, color=(36, 255, 12), text_color=(0, 0, 0)):
     """
     Draw bbox + label and save both raw and annotated images in own_results/
     (kept from your original code)
@@ -63,6 +66,7 @@ def draw_own_bbox(img, x1, y1, x2, y2, label, color=(36,255,12), text_color=(0,0
     img_rgb = cv2.putText(img_rgb, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, text_color, 1)
     cv2.imwrite(f"own_results/annotated_image_{label}_{rand}.jpg", img_rgb)
 
+
 def _results_to_dicts_v8(result):
     """
     Convert a single Ultralytics result (v8+) to list[dict] like v5's pandas() output.
@@ -74,7 +78,7 @@ def _results_to_dicts_v8(result):
 
     xyxy = boxes.xyxy.cpu().numpy()      # (N,4)
     conf = boxes.conf.cpu().numpy()      # (N,)
-    cls  = boxes.cls.cpu().numpy().astype(int)  # (N,)
+    cls = boxes.cls.cpu().numpy().astype(int)  # (N,)
     names = result.names  # dict: class_id -> name
 
     dicts = []
@@ -96,6 +100,7 @@ def _results_to_dicts_v8(result):
     dicts.sort(key=lambda d: d["bboxArea"], reverse=True)
     return dicts
 
+
 def _save_v8_visual(result, save_dir="runs"):
     """
     Save YOLOv8 annotated image into runs/ (near your previous v5 behavior).
@@ -107,6 +112,7 @@ def _save_v8_visual(result, save_dir="runs"):
     cv2.imwrite(out_path, plotted)
     return out_path
 
+
 def predict_image(image, model, signal):
     """
     Original Week 8 logic adapted to v8+.
@@ -115,7 +121,7 @@ def predict_image(image, model, signal):
     try:
         img_path = os.path.join('uploads', image)
         img_pil = Image.open(img_path)
-        results = model.predict(img_pil, verbose = False)  # list of Results
+        results = model.predict(img_pil, verbose=False)  # list of Results
         r = results[0]
         _save_v8_visual(r, save_dir="runs")  # mimic v5 results.save('runs')
 
@@ -177,6 +183,7 @@ def predict_image(image, model, signal):
         print(f"Final result: NA ({e})")
         return 'NA'
 
+
 def predict_image_week_9(image, model):
     """
     Your Week 9 simplified logic, now on v8+:
@@ -185,7 +192,7 @@ def predict_image_week_9(image, model):
     img_path = os.path.join('uploads', image)
     img_pil = Image.open(img_path)
 
-    results = model.predict(img_pil, verbose = False)
+    results = model.predict(img_pil, verbose=False)
     r = results[0]
     _save_v8_visual(r, save_dir="runs")
 
@@ -208,6 +215,7 @@ def predict_image_week_9(image, model):
     }
     image_id = str(name_to_id[pred['name']]) if not isinstance(pred, str) else 'NA'
     return image_id
+
 
 def stitch_image():
     """
@@ -237,6 +245,7 @@ def stitch_image():
         shutil.move(img, os.path.join("runs", "originals", os.path.basename(img)))
 
     return stitchedImg
+
 
 def stitch_image_own():
     """

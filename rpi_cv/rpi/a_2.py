@@ -3,7 +3,7 @@ Simple script for Raspberry Pi to take a photo and send it to the
 image recognition server defined in config/rpi.yaml.
 
 Notes:
-- Requires libcamera-still to be available on the Pi
+- Requires raspistill to be available on the Pi (legacy camera stack)
 - Requires the 'requests' Python package
 """
 
@@ -39,12 +39,12 @@ def get_image_server() -> tuple[str, int, Optional[int]]:
 
 
 def take_photo(filename: str) -> str:
-    """Capture a JPEG using libcamera-still and save to filename.
+    """Capture a JPEG using raspistill and save to filename.
 
     Raises subprocess.CalledProcessError if capture fails.
     """
     cmd = [
-        "libcamera-still",
+        "raspistill",
         "-e",
         "jpg",
         "-n",
@@ -72,13 +72,13 @@ def main() -> None:
     # Save into ./images directory
     out_dir = Path.cwd() / "images"
     out_dir.mkdir(parents=True, exist_ok=True)
-    filename = out_dir / f"{int(time.time())}_test.jpg"
+    filename = out_dir / f"{int(time.time())}_123_L.jpg"
 
     print(f"Capturing image to: {filename}")
     try:
         take_photo(str(filename))
     except FileNotFoundError:
-        print("ERROR: 'libcamera-still' not found. Run this on a Raspberry Pi with libcamera installed.")
+        print("ERROR: 'raspistill' not found. Run this on a Raspberry Pi with the legacy camera stack enabled.")
         return
     except subprocess.CalledProcessError as e:
         print(f"ERROR: Failed to capture image: {e}")
