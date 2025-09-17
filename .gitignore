@@ -5,5 +5,7 @@ venv/
 
 rpi_cv/cv/main_own.py
 rpi_cv/cv/model.py
-
+rpi_cv/cv/runs/
+rpi_cv/cv/uploads/
+rpi_cv/cv/own_results/
 
