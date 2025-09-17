@@ -48,12 +48,17 @@ def take_photo(filename: str) -> str:
         "-e",
         "jpg",
         "-n",
-        "-t",
-        "500",
+        "-t 500",
         "-vf",
         "-hf",
-        "-q",
-        "100",
+        "-q 100",
+        "-sh 40",
+        "-ISO 100"
+        "-awb auto",
+        "-ss 20000",
+        "-br 50",
+        "-co 10",
+        "-sa 10"
         "-o",
         filename,
     ]
