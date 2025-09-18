@@ -7,14 +7,7 @@ Expected Android message format (JSON):
 	{"type": "NAVIGATION", "data": {"commands": ["SF050", "LF090", "STOP"]}}
 
 Supported command tokens (case-insensitive):
-  Legacy fixed tokens:
-	FW--  forward (continuous / until obstacle)
-	BW--  backward (continuous / until obstacle)
-	TL--  turn left 90° (forward direction)
-	TR--  turn right 90° (forward direction)
-	STOP  halt immediately
-
-  Dynamic distance / angle tokens (Android current buttons use these):
+  Dynamic distance / angle tokens:
 	SF<ddd>  standard forward <dist> cm   (e.g. SF050)
 	SB<ddd>  standard backward <dist> cm  (e.g. SB050)
 	F<dist>  forward <dist> cm            (alias, e.g. F50 or F050)
@@ -25,7 +18,7 @@ Supported command tokens (case-insensitive):
 	RF<aaa>  turn right <angle> deg, forward direction (e.g. RF090)
 	L<angle> turn left <angle> deg (assumes forward)
 	R<angle> turn right <angle> deg (assumes forward)
-	LB<angle>/RB<angle> (optional) turn using backward direction if provided
+	LB<angle>/RB<angle> turn using backward direction (optional)
 	HALT / STOP immediate halt
 
 On connect this script sends mode 'manual' and an info banner.
@@ -48,7 +41,6 @@ except Exception as _imp_err:  # pragma: no cover
 else:  # pragma: no cover
 	_ROBOT_IMPORT_ERROR = None
 
-LEGACY_TOKENS = {"FW--", "BW--", "TL--", "TR--", "STOP"}
 ROBOT_PORT = "/dev/ttyACM0" # TODO: Check this before running
 ROBOT_BAUD = 115200
 
@@ -69,15 +61,7 @@ class ManualController:
 		baud = ROBOT_BAUD
 		self.logger.info("Initialising RobotController (port=%s baud=%s)", port, baud)
 		self.robot = RobotController(port, baud)  # type: ignore
-		rob = self.robot
-		# legacy static handlers for backwards compatibility
-		self._cmd_handlers = {
-			"FW--": (lambda r=rob: r.move_forward(999)),  # type: ignore[attr-defined]
-			"BW--": (lambda r=rob: r.move_backward(999)),  # type: ignore[attr-defined]
-			"TL--": (lambda r=rob: r.turn_left(90, True)),  # type: ignore[attr-defined]
-			"TR--": (lambda r=rob: r.turn_right(90, True)),  # type: ignore[attr-defined]
-			"STOP": (lambda r=rob: r.halt()),  # type: ignore[attr-defined]
-		}
+		self._cmd_handlers = {}
 
 	def _dispatch_dynamic(self, token: str) -> bool:
 		"""Parse and execute a dynamic command token.
@@ -167,30 +151,12 @@ class ManualController:
 		for c in commands:
 			raw = str(c).strip()
 			up = raw.upper()
-			# Backwards compatibility first
-			if up in LEGACY_TOKENS:
-				if not self._started and up != 'STOP':
-					self._started = True
-					self.android.send(AndroidMessage('status', 'running'))
-				fn = self._cmd_handlers.get(up)
-				if fn is None:
-					self.logger.warning("No legacy handler for command: %s", up)
-					continue
-				try:
-					ack = fn()
-					self.logger.debug("Executed legacy %s -> %s", up, ack)
-				except Exception as e:
-					self.logger.error("Error executing %s: %s", up, e)
-					continue
-				sent_any = True
-				continue
-			# Dynamic parsing
 			dispatched = self._dispatch_dynamic(raw)
 			if dispatched:
 				if not self._started and up not in {"STOP", "HALT"}:
 					self._started = True
 					self.android.send(AndroidMessage('status', 'running'))
-				self.logger.debug("Executed dynamic %s", raw)
+				self.logger.debug("Executed %s", raw)
 				sent_any = True
 			else:
 				self.logger.warning("Ignored unknown command token: %s", raw)
