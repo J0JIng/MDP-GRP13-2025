@@ -4,14 +4,29 @@ This script connects to Android over Bluetooth and uses RobotController to
 execute manual movement commands received from Android.
 
 Expected Android message format (JSON):
-	{"type": "NAVIGATION", "data": {"commands": ["FW--", "TL--", "STOP"]}}
+	{"type": "NAVIGATION", "data": {"commands": ["SF050", "LF090", "STOP"]}}
 
-Supported commands in the list:
+Supported command tokens (case-insensitive):
+  Legacy fixed tokens:
 	FW--  forward (continuous / until obstacle)
 	BW--  backward (continuous / until obstacle)
-	TL--  turn left 90°
-	TR--  turn right 90°
+	TL--  turn left 90° (forward direction)
+	TR--  turn right 90° (forward direction)
 	STOP  halt immediately
+
+  Dynamic distance / angle tokens (Android current buttons use these):
+	SF<ddd>  standard forward <dist> cm   (e.g. SF050)
+	SB<ddd>  standard backward <dist> cm  (e.g. SB050)
+	F<dist>  forward <dist> cm            (alias, e.g. F50 or F050)
+	B<dist>  backward <dist> cm
+	CF<dist> crawl forward <dist> cm
+	CB<dist> crawl backward <dist> cm
+	LF<aaa>  turn left <angle> deg, forward direction  (e.g. LF090)
+	RF<aaa>  turn right <angle> deg, forward direction (e.g. RF090)
+	L<angle> turn left <angle> deg (assumes forward)
+	R<angle> turn right <angle> deg (assumes forward)
+	LB<angle>/RB<angle> (optional) turn using backward direction if provided
+	HALT / STOP immediate halt
 
 On connect this script sends mode 'manual' and an info banner.
 """
@@ -33,8 +48,8 @@ except Exception as _imp_err:  # pragma: no cover
 else:  # pragma: no cover
 	_ROBOT_IMPORT_ERROR = None
 
-VALID_MANUAL = {"FW--", "BW--", "TL--", "TR--", "STOP"}
-ROBOT_PORT = "COM4"
+LEGACY_TOKENS = {"FW--", "BW--", "TL--", "TR--", "STOP"}
+ROBOT_PORT = "/dev/ttyACM0" # TODO: Check this before running
 ROBOT_BAUD = 115200
 
 
@@ -55,6 +70,7 @@ class ManualController:
 		self.logger.info("Initialising RobotController (port=%s baud=%s)", port, baud)
 		self.robot = RobotController(port, baud)  # type: ignore
 		rob = self.robot
+		# legacy static handlers for backwards compatibility
 		self._cmd_handlers = {
 			"FW--": (lambda r=rob: r.move_forward(999)),  # type: ignore[attr-defined]
 			"BW--": (lambda r=rob: r.move_backward(999)),  # type: ignore[attr-defined]
@@ -62,6 +78,69 @@ class ManualController:
 			"TR--": (lambda r=rob: r.turn_right(90, True)),  # type: ignore[attr-defined]
 			"STOP": (lambda r=rob: r.halt()),  # type: ignore[attr-defined]
 		}
+
+	def _dispatch_dynamic(self, token: str) -> bool:
+		"""Parse and execute a dynamic command token.
+
+		Supported dynamic formats (case-insensitive):
+		  F<dist>    forward dist cm (0-999, F999 = until obstacle)
+		  B<dist>    backward dist cm
+		  CF<dist>   crawl forward dist cm
+		  CB<dist>   crawl backward dist cm
+		  L<angle>   turn left <angle> deg (dir=True)
+		  R<angle>   turn right <angle> deg (dir=True)
+		  HALT / STOP immediate halt
+
+		Angle 90 is the typical left/right; other values allowed (0-359).
+		Returns True if dispatched, False if not recognised.
+		"""
+		if self.robot is None:
+			return False
+		r = self.robot
+		up = token.upper()
+		# direct halts
+		if up in {"HALT", "STOP"}:
+			return bool(r.halt())
+		# Standard speed prefixed movement: SFxxx / SBxxx
+		if up.startswith('S') and len(up) >= 3 and up[1] in {'F','B'} and up[2:].isdigit():
+			dist = int(up[2:])
+			if up[1] == 'F':
+				return bool(r.move_forward(dist))
+			else:
+				return bool(r.move_backward(dist))
+		# Turn with explicit direction char: LF090 / RF090 / LB090 / RB090
+		if up[0] in {'L','R'} and len(up) >= 3 and up[1] in {'F','B'} and up[2:].isdigit():
+			ang = int(up[2:])
+			fwd = (up[1] == 'F')
+			if up[0] == 'L':
+				return bool(r.turn_left(ang, fwd))
+			else:
+				return bool(r.turn_right(ang, fwd))
+		# crawl variants
+		try:
+			if up.startswith("CF"):
+				dist = int(up[2:])
+				return bool(r.crawl_forward(dist))
+			if up.startswith("CB"):
+				dist = int(up[2:])
+				return bool(r.crawl_backward(dist))
+			# linear forward/back
+			if up.startswith("F") and up[1:].isdigit():
+				dist = int(up[1:])
+				return bool(r.move_forward(dist))
+			if up.startswith("B") and up[1:].isdigit():
+				dist = int(up[1:])
+				return bool(r.move_backward(dist))
+			# turns
+			if up.startswith("L") and up[1:].isdigit():
+				ang = int(up[1:])
+				return bool(r.turn_left(ang, True))
+			if up.startswith("R") and up[1:].isdigit():
+				ang = int(up[1:])
+				return bool(r.turn_right(ang, True))
+		except ValueError:
+			return False
+		return False
 
 	def start(self):
 		self.logger.info("Connecting Android link for manual mode")
@@ -86,26 +165,39 @@ class ManualController:
 			return
 		sent_any = False
 		for c in commands:
-			c = str(c).strip().upper()
-			if c not in VALID_MANUAL:
-				self.logger.warning("Ignored invalid manual command: %s", c)
+			raw = str(c).strip()
+			up = raw.upper()
+			# Backwards compatibility first
+			if up in LEGACY_TOKENS:
+				if not self._started and up != 'STOP':
+					self._started = True
+					self.android.send(AndroidMessage('status', 'running'))
+				fn = self._cmd_handlers.get(up)
+				if fn is None:
+					self.logger.warning("No legacy handler for command: %s", up)
+					continue
+				try:
+					ack = fn()
+					self.logger.debug("Executed legacy %s -> %s", up, ack)
+				except Exception as e:
+					self.logger.error("Error executing %s: %s", up, e)
+					continue
+				sent_any = True
 				continue
-			if not self._started and c != 'STOP':
-				self._started = True
-				self.android.send(AndroidMessage('status', 'running'))
-			fn = self._cmd_handlers.get(c)
-			if fn is None:
-				self.logger.warning("No handler for command: %s", c)
-				continue
-			try:
-				ack = fn()
-				self.logger.debug("Executed %s -> %s", c, ack)
-			except Exception as e:
-				self.logger.error("Error executing %s: %s", c, e)
-				continue
-			sent_any = True
+			# Dynamic parsing
+			dispatched = self._dispatch_dynamic(raw)
+			if dispatched:
+				if not self._started and up not in {"STOP", "HALT"}:
+					self._started = True
+					self.android.send(AndroidMessage('status', 'running'))
+				self.logger.debug("Executed dynamic %s", raw)
+				sent_any = True
+			else:
+				self.logger.warning("Ignored unknown command token: %s", raw)
 		if sent_any:
 			self.android.send(AndroidMessage('info', 'Manual commands executed.'))
+		else:
+			self.android.send(AndroidMessage('info', 'No manual commands executed.'))
 
 	def _recv_loop(self):
 		self.logger.info("Entering manual receive loop")
