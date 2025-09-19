@@ -499,6 +499,7 @@ class RaspberryPi:
             # rpistr += " --metadata - --metadata-format txt >> PiLibtext.txt"
 
             rpistr = f"libcamera-still -e jpg -n -t 500 -o {filename}"  # TODO: configure camera settings above later
+            # rpistr =
 
             os.system(rpistr)
 
