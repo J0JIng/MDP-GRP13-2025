@@ -27,7 +27,7 @@ On connect this script sends mode 'manual' and an info banner.
 import json
 import os
 import time
-from typing import Optional, Callable
+from typing import Optional, Callable, Tuple
 
 from helper.logger import prepare_logger
 from link.android_link import AndroidLink
@@ -65,68 +65,62 @@ class ManualController:
         self.robot = RobotController(port, baud)  # type: ignore
         self._cmd_handlers = {}
 
-    def _dispatch_dynamic(self, token: str) -> bool:
+    def _dispatch_dynamic(self, token: str) -> Tuple[bool, bool]:
         """Parse and execute a dynamic command token.
 
-        Supported dynamic formats (case-insensitive):
-          F<dist>    forward dist cm (0-999, F999 = until obstacle)
-          B<dist>    backward dist cm
-          CF<dist>   crawl forward dist cm
-          CB<dist>   crawl backward dist cm
-          L<angle>   turn left <angle> deg (dir=True)
-          R<angle>   turn right <angle> deg (dir=True)
-          HALT / STOP immediate halt
+        Returns (recognized, success):
+          recognized: pattern matches a supported command syntax
+          success: robot method returned truthy (command executed)
 
-        Angle 90 is the typical left/right; other values allowed (0-359).
-        Returns True if dispatched, False if not recognised.
+        Supported dynamic formats (case-insensitive):
+          SF<ddd> / SB<ddd>   standard speed forward/back cm
+          F<dist> / B<dist>   forward/back cm (alias)
+          CF<dist> / CB<dist> crawl forward/back cm
+          LF<aaa> / RF<aaa>   turn left/right angle deg using forward direction
+          LB<aaa> / RB<aaa>   turn left/right angle deg using backward direction
+          L<angle> / R<angle> simple turn (assumes forward direction)
+          HALT / STOP         immediate halt
         """
         if self.robot is None:
-            return False
+            return False, False
         r = self.robot
         up = token.upper()
+
         # direct halts
         if up in {"HALT", "STOP"}:
-            return bool(r.halt())
+            return True, bool(r.halt())
+
         # Standard speed prefixed movement: SFxxx / SBxxx
         if up.startswith('S') and len(up) >= 3 and up[1] in {'F', 'B'} and up[2:].isdigit():
             dist = int(up[2:])
-            if up[1] == 'F':
-                return bool(r.move_forward(dist))
-            else:
-                return bool(r.move_backward(dist))
+            ok = r.move_forward(dist) if up[1] == 'F' else r.move_backward(dist)
+            return True, bool(ok)
+
         # Turn with explicit direction char: LF090 / RF090 / LB090 / RB090
         if up[0] in {'L', 'R'} and len(up) >= 3 and up[1] in {'F', 'B'} and up[2:].isdigit():
             ang = int(up[2:])
             fwd = (up[1] == 'F')
             if up[0] == 'L':
-                return bool(r.turn_left(ang, fwd))
-            else:
-                return bool(r.turn_right(ang, fwd))
-        # crawl variants
+                return True, bool(r.turn_left(ang, fwd))
+            return True, bool(r.turn_right(ang, fwd))
+
+        # Remaining variants
         try:
-            if up.startswith("CF"):
-                dist = int(up[2:])
-                return bool(r.crawl_forward(dist))
-            if up.startswith("CB"):
-                dist = int(up[2:])
-                return bool(r.crawl_backward(dist))
-            # linear forward/back
+            if up.startswith("CF") and up[2:].isdigit():
+                return True, bool(r.crawl_forward(int(up[2:])))
+            if up.startswith("CB") and up[2:].isdigit():
+                return True, bool(r.crawl_backward(int(up[2:])))
             if up.startswith("F") and up[1:].isdigit():
-                dist = int(up[1:])
-                return bool(r.move_forward(dist))
+                return True, bool(r.move_forward(int(up[1:])))
             if up.startswith("B") and up[1:].isdigit():
-                dist = int(up[1:])
-                return bool(r.move_backward(dist))
-            # turns
+                return True, bool(r.move_backward(int(up[1:])))
             if up.startswith("L") and up[1:].isdigit():
-                ang = int(up[1:])
-                return bool(r.turn_left(ang, True))
+                return True, bool(r.turn_left(int(up[1:]), True))
             if up.startswith("R") and up[1:].isdigit():
-                ang = int(up[1:])
-                return bool(r.turn_right(ang, True))
+                return True, bool(r.turn_right(int(up[1:]), True))
         except ValueError:
-            return False
-        return False
+            return False, False
+        return False, False
 
     def start(self):
         self.logger.info("Connecting Android link for manual mode")
@@ -149,23 +143,30 @@ class ManualController:
         if self.robot is None:
             self.logger.error("Robot not initialised; ignoring commands.")
             return
-        sent_any = False
+        executed = 0
+        failed = 0
+        unknown = 0
         for c in commands:
             raw = str(c).strip()
             up = raw.upper()
-            dispatched = self._dispatch_dynamic(raw)
-            if dispatched:
+            recognized, success = self._dispatch_dynamic(raw)
+            if recognized and success:
                 if not self._started and up not in {"STOP", "HALT"}:
                     self._started = True
                     self.android.send(AndroidMessage('status', 'running'))
                 self.logger.debug("Executed %s", raw)
-                sent_any = True
+                executed += 1
+            elif recognized and not success:
+                self.logger.warning("Command recognized but robot reported failure: %s", raw)
+                failed += 1
             else:
-                self.logger.warning("Ignored unknown command token: %s", raw)
-        if sent_any:
-            self.android.send(AndroidMessage('info', 'Manual commands executed.'))
+                self.logger.warning("Unrecognized command token: %s", raw)
+                unknown += 1
+        if executed:
+            self.android.send(AndroidMessage(
+                'info', f'Manual: {executed} executed, {failed} failed, {unknown} unknown.'))
         else:
-            self.android.send(AndroidMessage('info', 'No manual commands executed.'))
+            self.android.send(AndroidMessage('info', f'Manual: none executed (failed={failed}, unknown={unknown}).'))
 
     def _recv_loop(self):
         self.logger.info("Entering manual receive loop")
