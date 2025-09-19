@@ -125,9 +125,11 @@ def predict_image(image, model, signal):
         # Filter out Bullseye by name first
         preds = [d for d in preds if d["name"] != "Bullseye"]
 
+        # Detected 1 object
         if len(preds) == 1:
             pred = preds[0]
 
+        # Detected multiple objects
         elif len(preds) > 1:
             pred_shortlist = []
             current_area = preds[0]["bboxArea"]
@@ -171,8 +173,11 @@ def predict_image(image, model, signal):
             "circle": 40
         }
         image_id = str(name_to_id[pred['name']]) if not isinstance(pred, str) else 'NA'
+        pred_conf = pred["confidence"]
+
         print(f"Final result: {image_id}")
-        return image_id
+        print(f"Predicted confidence: {pred_conf:.4f}")
+        return image_id, pred_conf
     except Exception as e:
         print(f"Final result: NA ({e})")
         return 'NA'
