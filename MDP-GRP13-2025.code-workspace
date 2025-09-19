@@ -13,6 +13,9 @@
 			"path": "rpi_cv/rpi"
 		},
 		{
+			"path": "rpi_cv/cv"
+		},
+		{
 			"path": "stm"
 		}
 	],
