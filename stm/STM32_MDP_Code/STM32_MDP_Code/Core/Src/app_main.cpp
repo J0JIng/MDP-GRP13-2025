@@ -22,8 +22,6 @@ void sensorIRTask(void *pv);
 void sensorUSTask(void *pv);
 void sensorIMUTask(void *pv);
 
-void sensorIMUTaskInit();
-
 
 osThreadId_t oledTaskHandle;
 const osThreadAttr_t oledTask_attr = {
@@ -75,8 +73,8 @@ static u_ctx procCtx = {
 };
 
 osMessageQueueId_t ctrlQueue = osMessageQueueNew(
-		10,
-		10, // CHANGE !!!
+		10,                                  // max number of messages in queue
+		sizeof(AppParser::MOTION_PKT_t),      // size of each message
 		NULL
 );
 
@@ -89,6 +87,8 @@ u_ctx ctrlCtx = {
 };
 
 AppMotion::MotionController controller(&ctrlCtx);
+AppParser::Processor processor(&procCtx, &ctrlCtx);
+AppParser::Listener listener(&procCtx);
 /*****************************************************************************************/
 
 /*
@@ -102,20 +102,20 @@ void initializeCPPconstructs(void) {
 
 
 	// create instance of the Task
+	// 1. Processor related task
+	processor.start();
 
-	// 1. Display related task
+	// 2. Motor related task
+	controller.start();
+
+
+	// 3. Display related task
 	oledTaskHandle = osThreadNew(Display::oledTask, NULL, &oledTask_attr);
 
-	// 2. Sensor related task
+	// 4. Sensor related task
 	imuTaskHandle = osThreadNew(sensorIMUTask, NULL, &imuTask_attr);
 	//	irTaskHandle = osThreadNew(sensorIRTask, NULL, &irTask_attr);
 	//	usTaskHandle = osThreadNew(sensorUSTask, NULL, &usTask_attr);
-
-	// 3. Listener related task
-
-
-	// 4. Motor related task
-	controller.start();
 
 }
 
@@ -129,22 +129,26 @@ float ir_distR_Avg = 0;       // Average distance for right IR sensor
 
 
 void sensorIRTask(void *pv) {
-	// add logic
-	//	for(;;){}
+
+	// init sensorIRTask
+
+	//	for(;;){
+	// add logic ...
+	//	sensor_data.ir_distL = 10.0;
+	//	sensor_data.ir_distR = 10.0;
+	// sensor_data.usonic_dist = 10.0;
+	//}
 }
 
 void sensorUSTask(void *pv) {
-    // Start timers once
-    HAL_TIM_Base_Start(&htim6);
-    HAL_TIM_IC_Start_IT(&htim8, TIM_CHANNEL_2); // HAL_TIM_IC_Start_IT() enables interrupts , on falling/rising edge occur call callback HAL_TIM_IC_CaptureCallback
-    __HAL_TIM_SET_CAPTUREPOLARITY(&htim8, TIM_CHANNEL_2, TIM_INPUTCHANNELPOLARITY_RISING);
 
-    for (;;) {
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
-        osDelay(1);  // 1ms is safe for RTOS, or use a microsecond delay function if available
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
-        osDelay(50);
-    }
+	// init sensorUSTask
+
+	//	for(;;){
+	// add logic ...
+	//
+	// sensor_data.usonic_dist = 10.0;
+	//}
 }
 
 
@@ -153,29 +157,6 @@ float SEq_1 = 1.0f;
 float SEq_2 = 0.0f;
 float SEq_3 = 0.0f;
 float SEq_4 = 0.0f;
-
-void sensorIMUTaskInit() {
-
-	/**Init IMU**/
-	IMU_Initialise(&imu, &hi2c2);
-	osDelay(400);
-	Gyro_calibrate(&imu);
-	Mag_init(&imu);
-	sensor_data.imu = &imu;
-	char sbuf[100] = { 0 };
-	HAL_StatusTypeDef result;
-
-	/**I2C scanner for debug purposes **/
-	printf("Scanning I2C bus:\r\n");
-	for (uint8_t addr = 1; addr < 127; addr++) {
-		result = HAL_I2C_IsDeviceReady(&hi2c2, addr << 1, 1, 10);
-		if (result == HAL_OK) {
-			uint16_t len = sprintf(&sbuf[0], "I2C device found at 0x%02X\r\n", addr);
-			HAL_UART_Transmit(&huart3, (uint8_t*)sbuf, len, HAL_MAX_DELAY);
-		}
-	}
-}
-
 
 void sensorIMUTask(void *pv) {
 
@@ -206,11 +187,12 @@ void sensorIMUTask(void *pv) {
 
 		IMU_AccelRead(&imu);
 		IMU_GyroRead(&imu);
-		//Mag_read(&imu);
 
 		quaternionUpdate(
-				imu.gyro[0] * DEG2RAD, imu.gyro[1] * DEG2RAD,
-				imu.gyro[2] * DEG2RAD, imu.acc[0],
+				imu.gyro[0] * DEG2RAD,
+				imu.gyro[1] * DEG2RAD,
+				imu.gyro[2] * DEG2RAD,
+				imu.acc[0],
 				imu.acc[1],
 				imu.acc[2],
 				(HAL_GetTick() - timeNow) * 0.001f
@@ -224,25 +206,25 @@ void sensorIMUTask(void *pv) {
 		imu.q[3] = SEq_4;
 
 		sensor_data.yaw_abs_prev = sensor_data.yaw_abs;
+
+		// yaw = atan2(2(q1​q2​+q0​q3​),q02​+q12​−q22​−q32​)
 		sensor_data.yaw_abs = atan2(
 				2.0f * (imu.q[1] * imu.q[2] + imu.q[0] * imu.q[3]),
-				imu.q[0] * imu.q[0] + imu.q[1] * imu.q[1] - imu.q[2] * imu.q[2]
-						- imu.q[3] * imu.q[3])
+				imu.q[0] * imu.q[0] + imu.q[1] * imu.q[1] - imu.q[2] * imu.q[2] - imu.q[3] * imu.q[3])
 				* 57.295779513082320876798154814105f;
-		sensor_data.yaw_abs_time = timeNow; // note that this method runs the risk of overflow but its every 49 days.
 
-		uint16_t len = sprintf(
-				&sbuf[0],
-				"%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f\r\n",
-				imu.acc[0],imu.acc[1],imu.acc[2],
-				imu.gyro[0], imu.gyro[1],imu.gyro[2],
-				imu.q[0],
-				sensor_data.yaw_abs,
-				sensor_data.ir_distL
-				);
-
-		HAL_UART_Transmit(&huart3, (uint8_t*) sbuf, len, 10);
-		//	HAL_UART_Receive_IT(&huart3, (uint8_t*) aRxBuffer, 5);
+		sensor_data.yaw_abs_time = timeNow;
+//		uint16_t len = sprintf(
+//				&sbuf[0],
+//				"%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f\r\n",
+//				imu.acc[0],imu.acc[1],imu.acc[2],
+//				imu.gyro[0], imu.gyro[1],imu.gyro[2],
+//				imu.q[0],
+//				sensor_data.yaw_abs,
+//				sensor_data.ir_distL
+//				);
+//
+//		HAL_UART_Transmit(&huart3, (uint8_t*) sbuf, len, 10);
 		is_task_alive_struct.senr = true;
 
 	}
@@ -250,14 +232,15 @@ void sensorIMUTask(void *pv) {
 
 #define gyroMeasError 3.14159265358979f * (1.0f / 180.0f)
 #define beta sqrt(3.0f / 4.0f) * gyroMeasError
+
 void quaternionUpdate(float w_x, float w_y, float w_z, float a_x, float a_y,
 		float a_z, float deltat) {
 
-	float norm;                                                   // vector norm
+	float norm;                                                   		  // vector norm
 	float SEqDot_omega_1, SEqDot_omega_2, SEqDot_omega_3, SEqDot_omega_4; // quaternion derivative from gyroscopes elements
-	float f_1, f_2, f_3;                          // objective function elements
-	float J_11or24, J_12or23, J_13or22, J_14or21, J_32, J_33; // objective function Jacobian elements
-	float SEqHatDot_1, SEqHatDot_2, SEqHatDot_3, SEqHatDot_4; // estimated direction of the gyro error
+	float f_1, f_2, f_3;                          						  // objective function elements
+	float J_11or24, J_12or23, J_13or22, J_14or21, J_32, J_33; 			  // objective function Jacobian elements
+	float SEqHatDot_1, SEqHatDot_2, SEqHatDot_3, SEqHatDot_4; 			  // estimated direction of the gyro error
 
 	float halfSEq_1 = 0.5f * SEq_1;
 	float halfSEq_2 = 0.5f * SEq_2;
@@ -323,12 +306,15 @@ void quaternionUpdate(float w_x, float w_y, float w_z, float a_x, float a_y,
 //	test_run = true;
 //}
 
-//void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-//	//__HAL_UART_CLEAR_OREFLAG(&huart3);
-//	if (huart == &huart3) {
-//		listener.invoke();
-//	}
-//}
+void _ext_sig_halt(void) {
+	controller.emergencyStop();
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	if (huart == &huart3) {
+		listener.invoke();
+	}
+}
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
 	static int t1, t2, first=0,echo=0;
@@ -355,5 +341,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
 		}
 	}
 }
+
+
 
 

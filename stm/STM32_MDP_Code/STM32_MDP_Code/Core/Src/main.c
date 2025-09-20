@@ -44,6 +44,8 @@ ICM20948 imu;
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c2;
 
+TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim6;
 TIM_HandleTypeDef htim8;
@@ -51,6 +53,8 @@ TIM_HandleTypeDef htim9;
 TIM_HandleTypeDef htim12;
 
 UART_HandleTypeDef huart3;
+DMA_HandleTypeDef hdma_usart3_rx;
+DMA_HandleTypeDef hdma_usart3_tx;
 
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -66,6 +70,7 @@ const osThreadAttr_t defaultTask_attributes = {
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_TIM8_Init(void);
 static void MX_TIM4_Init(void);
@@ -73,10 +78,12 @@ static void MX_TIM9_Init(void);
 static void MX_TIM12_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_USART3_UART_Init(void);
+static void MX_TIM2_Init(void);
+static void MX_TIM3_Init(void);
 void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
-void UltraSonic(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -112,6 +119,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_TIM6_Init();
   MX_TIM8_Init();
   MX_TIM4_Init();
@@ -119,8 +127,11 @@ int main(void)
   MX_TIM12_Init();
   MX_I2C2_Init();
   MX_USART3_UART_Init();
+  MX_TIM2_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   initializeCPPconstructs();
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -163,7 +174,6 @@ int main(void)
   while (1) {
 
     /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
 
    	}
@@ -242,6 +252,104 @@ static void MX_I2C2_Init(void)
   /* USER CODE BEGIN I2C2_Init 2 */
 
   /* USER CODE END I2C2_Init 2 */
+
+}
+
+/**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_Encoder_InitTypeDef sConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 65535;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
+  sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC1Filter = 0;
+  sConfig.IC2Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC2Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC2Filter = 0;
+  if (HAL_TIM_Encoder_Init(&htim2, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_Encoder_InitTypeDef sConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 0;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 65535;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
+  sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC1Filter = 0;
+  sConfig.IC2Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC2Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC2Filter = 0;
+  if (HAL_TIM_Encoder_Init(&htim3, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
 
 }
 
@@ -547,6 +655,25 @@ static void MX_USART3_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
+  /* DMA1_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -562,6 +689,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, GPIO_PIN_RESET);
@@ -608,20 +736,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-//void I2C_Scan(void) {
-//    printf("Scanning I2C bus...\n");
-//    for (uint8_t addr = 1; addr < 127; addr++) {
-//        if (HAL_I2C_IsDeviceReady(&hi2c2, addr << 1, 1, 10) == HAL_OK) {
-//        	char line[32];
-//			snprintf(line, sizeof(line), "I2C device found at 0x%02X\r\n", addr);
-//		    HAL_UART_Transmit(&huart3, (uint8_t*)line, strlen(line), HAL_MAX_DELAY);
-//			OLED_ShowString(10, 10, &line[0]);
-//			OLED_Refresh_Gram();
-//			HAL_Delay(2000);
-//			OLED_Clear();
-//        }
-//    }
-//}
 
 void HAL_GPIO_EXTI_Callback( uint16_t GPIO_Pin ) {
      // see EXTI0_IRQHandler() in stm32f4xx_it.c for interrupt
@@ -629,78 +743,6 @@ void HAL_GPIO_EXTI_Callback( uint16_t GPIO_Pin ) {
 //	        buttonPressed = 1;
 	}
 }
-
-void MotorDrive_enable(void) {
-	  //Enable PWM through TIM4-CH1/CH4 to drive the DC motor - Rev D board
-//	  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);  // on Motor drive A interface
-//	  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);  // on Motor drive A interface
-//	  HAL_TIM_PWM_Start(&htim9, TIM_CHANNEL_1);  // on Motor drive D interface
-//	  HAL_TIM_PWM_Start(&htim9, TIM_CHANNEL_2);  // on Motor drive D interface
-}
-
-void Motor_direction(uint8_t forward) {
-//	if (forward){// move forward
-//		__HAL_TIM_SetCompare(&htim4,TIM_CHANNEL_3,0); // set IN1 to maximum PWM (7199) for '1'
-//		__HAL_TIM_SetCompare(&htim9,TIM_CHANNEL_1,0); // set IN1 to maximum PWM (7199) for '1' for Drive D
-//	  }
-//	else { // reverse
-//		__HAL_TIM_SetCompare(&htim4,TIM_CHANNEL_4,0); // set IN2 to maximum PWM (7199) for '1'
-//		__HAL_TIM_SetCompare(&htim9,TIM_CHANNEL_2,0); // set IN2 to maximum PWM (7199) for '1' for Drive D
-//	}
-}
-
-void Motor_stop(void) {
-		//Set both IN1 and IN2 pins = '1'
-//		__HAL_TIM_SetCompare(&htim4,TIM_CHANNEL_3,0);
-//		__HAL_TIM_SetCompare(&htim4,TIM_CHANNEL_4,0);
-//		__HAL_TIM_SetCompare(&htim9,TIM_CHANNEL_1,0);
-//		__HAL_TIM_SetCompare(&htim9,TIM_CHANNEL_2,0);
-}
-
-void Motor_forward(int  pwmVal){
-	 // rotate motor in clockwise forward send the values to serial port for display
-//	 Motor_direction(1); //forward
-//	 __HAL_TIM_SetCompare(&htim4,TIM_CHANNEL_4,pwmVal); // output PWM waveform to drive motor A
-//	 __HAL_TIM_SetCompare(&htim9,TIM_CHANNEL_1,pwmVal); // output PWM waveform to drive motor D - for debugging
-//
-//    sprintf(buf, "PWM = %4dF ", pwmVal);
-//    OLED_ShowString(0, 20, buf);
-    //OLED_Refresh_Gram();
-}
-
-void Motor_reverse(int  pwmVal){
-	 // move robot forward send the values to serial port for display
-//	 Motor_direction(0); //reverse
-//	 __HAL_TIM_SetCompare(&htim4,TIM_CHANNEL_3,pwmVal); // output PWM waveform to drive motor A
-//	 __HAL_TIM_SetCompare(&htim9,TIM_CHANNEL_2,pwmVal); // output PWM waveform to drive motor D - for debugging
-//
-//    sprintf(buf, "PWM = %4dR ", pwmVal);
-//    OLED_ShowString(0, 20, buf);
-    //OLED_Refresh_Gram();
-}
-
-void ServoMotor_enable(void) {
-  //Enable PWM through TIM4-CH1/CH4 to drive the DC motor - Rev D board
-//  HAL_TIM_PWM_Start(&htim12, TIM_CHANNEL_1);  // on Motor drive A interface
-//  htim12.Instance->CCR1 = roll_servo_target;
-//  HAL_Delay(2000);
-}
-
-void ServoMotor_TurnRight(void) {
-//	htim12.Instance->CCR1 = servo_upper_bound;
-//	HAL_Delay(1000);
-}
-
-void ServoMotor_TurnLeft(void) {
-//	htim12.Instance->CCR1 = servo_lower_bound;
-//	HAL_Delay(1000);
-}
-
-void ServoMotor_TurnCenter(void) {
-//	htim12.Instance->CCR1 = servo_center;
-//	HAL_Delay(1000);
-}
-
 
 /* USER CODE END 4 */
 
@@ -717,8 +759,8 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
-    osDelay(50);
+//	  HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin); // debug
+	  osDelay(50);
   }
   /* USER CODE END 5 */
 }
