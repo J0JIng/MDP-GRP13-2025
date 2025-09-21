@@ -1,0 +1,62 @@
+14:36:06 **** Incremental Build of configuration Release for project STM32_MDP_Code ****
+make -j16 all 
+arm-none-eabi-g++ "../Core/Src/app_main.cpp" -mcpu=cortex-m4 -std=gnu++14 -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F -Os -ffunction-sections -fdata-sections -fno-exceptions -fno-rtti -fno-use-cxa-atexit -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/app_main.d" -MT"Core/Src/app_main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/app_main.o"
+arm-none-eabi-g++ "../Core/Src/app_motion.cpp" -mcpu=cortex-m4 -std=gnu++14 -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F -Os -ffunction-sections -fdata-sections -fno-exceptions -fno-rtti -fno-use-cxa-atexit -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/app_motion.d" -MT"Core/Src/app_motion.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/app_motion.o"
+arm-none-eabi-g++ "../Core/Src/app_parser.cpp" -mcpu=cortex-m4 -std=gnu++14 -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F -Os -ffunction-sections -fdata-sections -fno-exceptions -fno-rtti -fno-use-cxa-atexit -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/app_parser.d" -MT"Core/Src/app_parser.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/app_parser.o"
+../Core/Src/app_parser.cpp: In member function 'volatile void AppParser::Listener::invoke()':
+../Core/Src/app_parser.cpp:33:28: warning: unused variable 'tmp' [-Wunused-variable]
+   33 |                 osStatus_t tmp = osMessageQueuePut(
+      |                            ^~~
+../Core/Src/app_main.cpp: In function 'void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef*)':
+../Core/Src/app_main.cpp:321:14: warning: unused variable 'buffer' [-Wunused-variable]
+  321 |         char buffer[15];
+      |              ^~~~~~
+../Core/Src/app_parser.cpp: In static member function 'static void AppParser::Processor::processorTask(void*)':
+../Core/Src/app_parser.cpp:120:26: warning: unused variable 'buf_fill' [-Wunused-variable]
+  120 |                 uint32_t buf_fill = 0;
+      |                          ^~~~~~~~
+../Core/Src/app_motion.cpp: In static member function 'static void AppMotion::MotionController::motionTask(void*)':
+../Core/Src/app_motion.cpp:106:24: warning: unused variable 'lmotor' [-Wunused-variable]
+  106 |                 Motor *lmotor = self->lmotor;
+      |                        ^~~~~~
+../Core/Src/app_motion.cpp:107:24: warning: unused variable 'rmotor' [-Wunused-variable]
+  107 |                 Motor *rmotor = self->rmotor;
+      |                        ^~~~~~
+../Core/Src/app_motion.cpp: In member function 'void AppMotion::MotionController::move(bool, uint32_t, uint32_t, bool, bool)':
+../Core/Src/app_motion.cpp:209:26: warning: unused variable 'timeStart' [-Wunused-variable]
+  209 |                 uint32_t timeStart = HAL_GetTick();
+      |                          ^~~~~~~~~
+../Core/Src/app_motion.cpp:216:23: warning: variable 'init_angle' set but not used [-Wunused-but-set-variable]
+  216 |                 float init_angle = 0, cur_angle = 0;
+      |                       ^~~~~~~~~~
+../Core/Src/app_motion.cpp:216:39: warning: variable 'cur_angle' set but not used [-Wunused-but-set-variable]
+  216 |                 float init_angle = 0, cur_angle = 0;
+      |                                       ^~~~~~~~~
+../Core/Src/app_motion.cpp: In member function 'void AppMotion::MotionController::turn(bool, bool, bool, uint32_t)':
+../Core/Src/app_motion.cpp:308:25: warning: unused variable 'buf' [-Wunused-variable]
+  308 |                 uint8_t buf[30] = { 0 };
+      |                         ^~~
+../Core/Src/app_motion.cpp:312:23: warning: variable 'prev_yaw' set but not used [-Wunused-but-set-variable]
+  312 |                 float prev_yaw = cur;
+      |                       ^~~~~~~~
+arm-none-eabi-g++ -o "STM32_MDP_Code.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\noora\OneDrive\Documents\github\MDP-GRP13-2025\stm\STM32_MDP_Code\STM32_MDP_Code\STM32F407VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32_MDP_Code.map" -Wl,--gc-sections -static -u _printf_float --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
+C:/ST/STM32CubeIDE_1.19.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.win32_1.0.0.202411081344/tools/bin/../lib/gcc/arm-none-eabi/13.3.1/../../../../arm-none-eabi/bin/ld.exe: warning: STM32_MDP_Code.elf has a LOAD segment with RWX permissions
+Finished building target: STM32_MDP_Code.elf
+ 
+arm-none-eabi-size  STM32_MDP_Code.elf 
+arm-none-eabi-objdump -h -S STM32_MDP_Code.elf  > "STM32_MDP_Code.list"
+arm-none-eabi-objcopy  -O ihex STM32_MDP_Code.elf  "STM32_MDP_Code.hex"
+   text	   data	    bss	    dec	    hex	filename
+  51932	    492	  23236	  75660	  1278c	STM32_MDP_Code.elf
+arm-none-eabi-objcopy  -O binary STM32_MDP_Code.elf  "STM32_MDP_Code.bin"
+Finished building: default.size.stdout
+ 
+Finished building: STM32_MDP_Code.hex
+Finished building: STM32_MDP_Code.bin
+ 
+ 
+Finished building: STM32_MDP_Code.list
+ 
+
+14:36:07 Build Finished. 0 errors, 11 warnings. (took 1s.5ms)
+

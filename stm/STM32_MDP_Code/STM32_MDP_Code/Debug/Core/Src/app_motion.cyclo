@@ -1,0 +1,22 @@
+../Core/Inc/app_motion.h:113:17:static float AppMotion::MotionController::map(float, float, float, float, float)	1
+../Core/Src/app_motion.cpp:21:2:AppMotion::MotionController::MotionController(u_ctx*)	1
+../Core/Src/app_motion.cpp:27:7:void AppMotion::MotionController::start()	1
+../Core/Src/app_motion.cpp:99:7:static void AppMotion::MotionController::motionTask(void*)	8
+../Core/Src/app_motion.cpp:175:7:void AppMotion::MotionController::moveConstantPWM(bool, uint32_t, uint32_t)	3
+../Core/Src/app_motion.cpp:196:7:void AppMotion::MotionController::move(bool, uint32_t, uint32_t, bool, bool)	12
+../Core/Src/app_motion.cpp:294:7:void AppMotion::MotionController::turn(bool, bool, bool, uint32_t)	26
+../Core/Src/app_motion.cpp:385:7:void AppMotion::MotionController::emergencyStop()	1
+../Core/Src/app_motion.cpp:390:2:AppMotion::Servo::Servo(TIM_HandleTypeDef*, uint32_t, uint32_t, uint32_t, uint32_t)	1
+../Core/Src/app_motion.cpp:400:7:void AppMotion::Servo::turnLeft()	1
+../Core/Src/app_motion.cpp:405:7:void AppMotion::Servo::turnRight()	1
+../Core/Src/app_motion.cpp:410:7:void AppMotion::Servo::turnFront()	1
+../Core/Src/app_motion.cpp:417:2:AppMotion::Motor::Motor(TIM_HandleTypeDef*, uint32_t, uint32_t, uint32_t)	1
+../Core/Src/app_motion.cpp:433:7:bool AppMotion::Motor::setSpeed(uint32_t, bool)	15
+../Core/Src/app_motion.cpp:451:7:bool AppMotion::Motor::_setDutyCycleVal(uint32_t, bool)	15
+../Core/Src/app_motion.cpp:468:7:void AppMotion::Motor::halt()	7
+../Core/Src/app_motion.cpp:473:7:void AppMotion::Motor::setForward()	7
+../Core/Src/app_motion.cpp:478:7:void AppMotion::Motor::setBackward()	7
+../Core/Src/app_motion.cpp:485:2:AppMotion::Encoder::Encoder(TIM_HandleTypeDef*, uint32_t)	1
+../Core/Src/app_motion.cpp:493:11:uint32_t AppMotion::Encoder::getCount()	1
+../Core/Src/app_motion.cpp:497:11:uint32_t AppMotion::Encoder::getDelta(uint32_t, uint32_t)	4
+../Core/Inc/app_motion.h:116:37:static int AppMotion::MotionController::sgn(T) [with T = float]	1
