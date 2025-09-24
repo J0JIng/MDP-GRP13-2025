@@ -111,7 +111,7 @@ def execute_dummy_commands(robot: RobotController, commands: list[str]):
             if not ok:
                 print(f"  WARN: forward {dist} not acknowledged")
             # simple settle delay (could be proportional to dist)
-            time.sleep(dist / 100.0)
+            time.sleep(5)
         elif uc.startswith("SNAP"):
             # Expect pattern SNAP<id>_<Signal>
             payload = uc[4:]
