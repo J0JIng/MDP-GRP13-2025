@@ -41,7 +41,7 @@ STANDOFF_CM = 50
 
 # Obstacle side length (cm). If rectangular, you can split into OB_SIDE_X_CM/OB_SIDE_Y_CM.
 # TODO: adjust this value to your obstacle. For a 50cm face, leave as 50.
-OB_SIDE_CM = 50
+OB_SIDE_CM = 10
 
 # Distance to move between faces of the cuboid (cm). For a square footprint:
 # L = D + S/2 (from face centerline to corner orbit, then to next face centerline)
@@ -50,7 +50,7 @@ LEG_CM = int(STANDOFF_CM + OB_SIDE_CM / 2)
 # Initial obstacle assumptions
 OBSTACLE_ID_FIRST = 10  # Expect first capture to recognize Bullseye (id 10)
 SIGNAL_DEFAULT = "L"   # Symbol character for filename; server may not require this
-
+SLEEP_TIME = 10
 
 # Paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -169,26 +169,26 @@ def move_to_next_face(robot: RobotController, leg_cm: int = LEG_CM, clockwise: b
     try:
         if clockwise:
             ok = robot.turn_right(90, True) and ok
-            time.sleep(0.2)
+            time.sleep(SLEEP_TIME)
             ok = robot.move_forward(int(leg_cm)) and ok
             time.sleep(max(3.0, leg_cm / 30.0))
             ok = robot.turn_left(90, True) and ok
-            time.sleep(0.2)
+            time.sleep(SLEEP_TIME)
             ok = robot.move_forward(int(leg_cm)) and ok
             time.sleep(max(3.0, leg_cm / 30.0))
             ok = robot.turn_left(90, True) and ok
-            time.sleep(0.2)
+            time.sleep(SLEEP_TIME)
         else:
             ok = robot.turn_left(90, True) and ok
-            time.sleep(0.2)
+            time.sleep(SLEEP_TIME)
             ok = robot.move_forward(int(leg_cm)) and ok
             time.sleep(max(3.0, leg_cm / 30.0))
             ok = robot.turn_right(90, True) and ok
-            time.sleep(0.2)
+            time.sleep(SLEEP_TIME)
             ok = robot.move_forward(int(leg_cm)) and ok
             time.sleep(max(3.0, leg_cm / 30.0))
             ok = robot.turn_right(90, True) and ok
-            time.sleep(0.2)
+            time.sleep(SLEEP_TIME)
     except Exception as e:
         print(f"[MOVE] Error moving to next face: {e}")
         return False
