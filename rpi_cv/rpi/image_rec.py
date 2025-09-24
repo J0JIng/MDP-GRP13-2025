@@ -84,7 +84,7 @@ def post_image(filename: str) -> dict:
     """POST the image to the image recognition server and return parsed JSON."""
     cfg = load_rpi_config() or {}
     api = cfg.get("api", {}) if isinstance(cfg, dict) else {}
-    host = api.get("ip") or "192.168.13.13"
+    host = api.get("pc_ip") or "192.168.13.13"
     port = api.get("image_port", 5001)
     url = f"http://{host}:{port}/image"
 

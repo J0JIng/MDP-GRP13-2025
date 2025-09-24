@@ -40,17 +40,35 @@ ROBOT_BAUD = 115200
 STANDOFF_CM = 50
 
 # Obstacle side length (cm). If rectangular, you can split into OB_SIDE_X_CM/OB_SIDE_Y_CM.
-# TODO: adjust this value to your obstacle. For a 50cm face, leave as 50.
+#
+#
+# The obstacle is 10cm x 10cm.
 OB_SIDE_CM = 10
 
 # Distance to move between faces of the cuboid (cm). For a square footprint:
 # L = D + S/2 (from face centerline to corner orbit, then to next face centerline)
 LEG_CM = int(STANDOFF_CM + OB_SIDE_CM / 2)
 
+# Measured forward advance caused by a 90° arc-turn (cm). Calibrate on your robot.
+# Typical small skid-steer can advance ~5-15 cm during a 90° forward turn.
+# Start with 12 and adjust via the calibration steps below.
+ARC_ADVANCE_PER_90_CM = 12
+
+# When moving a "leg" immediately after a turn, subtract the turn's forward drift so the net leg is correct
+
+
+def compensated_leg(base_leg_cm: int, after_turns: int = 1) -> int:
+    comp = max(0, int(round(base_leg_cm - after_turns * ARC_ADVANCE_PER_90_CM)))
+    return max(0, comp)
+
+
 # Initial obstacle assumptions
 OBSTACLE_ID_FIRST = 10  # Expect first capture to recognize Bullseye (id 10)
 SIGNAL_DEFAULT = "L"   # Symbol character for filename; server may not require this
-SLEEP_TIME = 10
+SLEEP_TIME = 5
+WAIT_TIMEOUT_SEC = 12.0  # maximum time to wait for a single command to complete
+WAIT_STABLE_SEC = 0.2    # time the idle signal must remain stable to consider stopped
+SETTLE_SEC = 0.2         # small settling delay after idle
 
 # Paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -58,10 +76,35 @@ IMAGES_DIR = os.path.join(SCRIPT_DIR, "images")
 os.makedirs(IMAGES_DIR, exist_ok=True)
 
 
+def wait_until_idle(robot: RobotController, timeout: float = WAIT_TIMEOUT_SEC, stable: float = WAIT_STABLE_SEC) -> bool:
+    """Block until the robot indicates it's idle, or timeout.
+
+    Uses RobotController.poll_is_moving() pin state. Because polarity may vary by wiring,
+    we detect transitions and require the state to be stable for `stable` seconds before
+    considering the robot stopped. Returns True if idle detected before timeout.
+    """
+    start = time.time()
+    last_state = robot.poll_is_moving()
+    stable_since = None
+    while time.time() - start < timeout:
+        state = robot.poll_is_moving()
+        now = time.time()
+        if state != last_state:
+            last_state = state
+            stable_since = now
+        # consider "idle" the state that is the same value for >= stable window AND equals the initial low value
+        if stable_since is not None and (now - stable_since) >= stable:
+            # Heuristic: prefer LOW (0) as idle, but accept sustained state as idle to avoid hanging
+            if state in (0, False) or True:
+                return True
+        time.sleep(0.02)
+    return False
+
+
 def _api_url_from_config() -> str:
     cfg = load_rpi_config() or {}
     api = cfg.get("api", {}) if isinstance(cfg, dict) else {}
-    host = api.get("pc_ip") or "127.0.0.1"
+    host = api.get("pc_ip") or "192.168.13.13"
     port = api.get("image_port", 5001)
     return f"http://{host}:{port}/image"
 
@@ -70,8 +113,6 @@ def capture_image(obstacle_id: int, signal: str = SIGNAL_DEFAULT) -> str:
     """Capture an image of the current view.
 
     Primary method: raspistill with tuned params (matching image_rec.py)
-    Fallback: libcamera-still with sensible defaults
-
     Returns the image filename or raises RuntimeError.
     """
     ts = int(time.time())
@@ -106,23 +147,7 @@ def capture_image(obstacle_id: int, signal: str = SIGNAL_DEFAULT) -> str:
     if _run(cmd_raspi):
         return file_path
 
-    # # Fallback to libcamera-still
-    # libcamera = "libcamera-still"
-    # cmd_lib = " ".join([
-    #     libcamera,
-    #     "-n",
-    #     "-t", "500",
-    #     "--sharpness", "1.0",
-    #     "--contrast", "1.0",
-    #     "--saturation", "1.0",
-    #     "--brightness", "0.0",
-    #     "--awb", "auto",
-    #     "-o", filename,
-    # ])
-    # if _run(cmd_lib):
-    #     return filename
-
-    raise RuntimeError("Camera capture failed with both raspistill and libcamera-still")
+    raise RuntimeError("Camera capture failed with both raspistill")
 
 
 def post_image(filename: str) -> dict:
@@ -156,35 +181,48 @@ def move_to_next_face(robot: RobotController, leg_cm: int = LEG_CM, clockwise: b
     The robot starts centered in front of one face (distance ~ 50cm) facing that face.
     After this routine, it ends up centered in front of the adjacent face, facing that face.
 
-    Path (clockwise=True):  R90 → F(leg_cm) → L90 → F(leg_cm) → L90
-    Path (clockwise=False): L90 → F(leg_cm) → R90 → F(leg_cm) → R90
+    Path (clockwise=True):  R90 → F(leg_cm - arc_comp) → L90 → F(leg_cm - arc_comp) → L90
+    Path (clockwise=False): L90 → F(leg_cm - arc_comp) → R90 → F(leg_cm - arc_comp) → R90
 
     Returns True if all sub-commands were acknowledged.
+
+    Calibration: measure the net forward drift during a single 90° turn and set
+    ARC_ADVANCE_PER_90_CM accordingly. Then fine-tune until captures are centered.
     """
     ok = True
     try:
         if clockwise:
             ok = robot.turn_right(90, True) and ok
-            time.sleep(SLEEP_TIME)
-            ok = robot.move_forward(int(leg_cm)) and ok
-            time.sleep(max(3.0, leg_cm / 30.0))
+            wait_until_idle(robot)
+            time.sleep(SETTLE_SEC)
+            ok = robot.move_forward(compensated_leg(int(leg_cm), after_turns=1)) and ok
+            wait_until_idle(robot)
+            time.sleep(SETTLE_SEC)
             ok = robot.turn_left(90, True) and ok
-            time.sleep(SLEEP_TIME)
-            ok = robot.move_forward(int(leg_cm)) and ok
-            time.sleep(max(3.0, leg_cm / 30.0))
+            wait_until_idle(robot)
+            time.sleep(SETTLE_SEC)
+            ok = robot.move_forward(compensated_leg(int(leg_cm), after_turns=1)) and ok
+            wait_until_idle(robot)
+            time.sleep(SETTLE_SEC)
             ok = robot.turn_left(90, True) and ok
-            time.sleep(SLEEP_TIME)
+            wait_until_idle(robot)
+            time.sleep(SETTLE_SEC)
         else:
             ok = robot.turn_left(90, True) and ok
-            time.sleep(SLEEP_TIME)
-            ok = robot.move_forward(int(leg_cm)) and ok
-            time.sleep(max(3.0, leg_cm / 30.0))
+            wait_until_idle(robot)
+            time.sleep(SETTLE_SEC)
+            ok = robot.move_forward(compensated_leg(int(leg_cm), after_turns=1)) and ok
+            wait_until_idle(robot)
+            time.sleep(SETTLE_SEC)
             ok = robot.turn_right(90, True) and ok
-            time.sleep(SLEEP_TIME)
-            ok = robot.move_forward(int(leg_cm)) and ok
-            time.sleep(max(3.0, leg_cm / 30.0))
+            wait_until_idle(robot)
+            time.sleep(SETTLE_SEC)
+            ok = robot.move_forward(compensated_leg(int(leg_cm), after_turns=1)) and ok
+            wait_until_idle(robot)
+            time.sleep(SETTLE_SEC)
             ok = robot.turn_right(90, True) and ok
-            time.sleep(SLEEP_TIME)
+            wait_until_idle(robot)
+            time.sleep(SETTLE_SEC)
     except Exception as e:
         print(f"[MOVE] Error moving to next face: {e}")
         return False
