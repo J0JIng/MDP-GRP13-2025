@@ -61,7 +61,7 @@ os.makedirs(IMAGES_DIR, exist_ok=True)
 def _api_url_from_config() -> str:
     cfg = load_rpi_config() or {}
     api = cfg.get("api", {}) if isinstance(cfg, dict) else {}
-    host = api.get("ip") or "127.0.0.1"
+    host = api.get("pc_ip") or "127.0.0.1"
     port = api.get("image_port", 5001)
     return f"http://{host}:{port}/image"
 
