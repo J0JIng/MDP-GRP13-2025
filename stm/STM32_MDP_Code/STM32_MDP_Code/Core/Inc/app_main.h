@@ -30,6 +30,8 @@ void sensorIMUTask(void *pv);                // Task to handle IMU sensor
 
 void UARTReceiveTask(void const * argument); // Task to handle UART reception
 void initializeCPPconstructs(void);          // Function to initialize C++ objects if needed
+void _ext_sig_halt(void);
+void processorTask(void const *);
 void quaternionUpdate(float w_x, float w_y, float w_z, float a_x, float a_y, float a_z, float deltat);
 
 // =====================
@@ -49,6 +51,9 @@ typedef struct {
     float     ir_dist_th_L;            // Threshold for left IR sensor
     float     ir_dist_th_R;            // Threshold for right IR sensor
     uint32_t  last_halt_val;           // Stores magnitude of last motion command executed
+    float     cur_left;
+    float     cur_right;
+    float     target;
 } sensorData_t;
 
 // =====================

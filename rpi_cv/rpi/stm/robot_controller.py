@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Optional, Callable
 import asyncio
 
-from stm.serial_cmd_base_ll import SerialCmdBaseLL
+from serial_cmd_base_ll import SerialCmdBaseLL
 import RPi.GPIO as GPIO
 
 '''
@@ -31,10 +31,9 @@ class PinState(Enum):
     LOW = 0
     Z = -1
 
-
 class RobotController:
-    PIN_COMMAND: int = 15  # TODO DEFINE
-    PIN_OBSTACLE: int = 14  # TODO DEFINE
+    PIN_COMMAND :int = 15   #TODO DEFINE
+    PIN_OBSTACLE :int = 14  #TODO DEFINE
 
     def __init__(self, port: str, baudrate: int, _inst_obstr_cb: Optional[Callable[..., None]] = None):
         self.drv = SerialCmdBaseLL(port, baudrate)
@@ -58,14 +57,14 @@ class RobotController:
             GPIO.add_event_detect(self.PIN_OBSTACLE, GPIO.RISING,
                                   callback=self.sig_obst_callback, bouncetime=50)
 
-    def validate_dist(self, dist: int) -> None:
+    def validate_dist(self, dist:int) ->None:
         '''
         Validate the distance must be within 0-999
         '''
         if dist < 0 or dist > 999:
             raise ValueError("Invalid distance, must be 0-999")
 
-    def validate_angle(self, angle: int) -> None:
+    def validate_angle(self, angle:int) ->None:
         '''
         Validate the distance must be within 0-359
         '''
@@ -86,7 +85,7 @@ class RobotController:
         self.drv.add_module_byte(self.drv.Modules.MOTOR)
         self.drv.add_motor_cmd_byte(self.drv.MotorCmd.FWD_CHAR)
         self.drv.add_args_bytes(dist)
-        self.drv.add_motor_cmd_byte(self.drv.MotorCmd.PAD_CHAR)  # empty
+        self.drv.add_motor_cmd_byte(self.drv.MotorCmd.PAD_CHAR) #empty
         if no_brakes:
             self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LINEAR_CHAR)
         self.drv.pad_to_end()
@@ -106,12 +105,12 @@ class RobotController:
         self.drv.add_module_byte(self.drv.Modules.MOTOR)
         self.drv.add_motor_cmd_byte(self.drv.MotorCmd.BWD_CHAR)
         self.drv.add_args_bytes(dist)
-        self.drv.add_motor_cmd_byte(self.drv.MotorCmd.PAD_CHAR)  # empty
+        self.drv.add_motor_cmd_byte(self.drv.MotorCmd.PAD_CHAR) #empty
         if no_brakes:
             self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LINEAR_CHAR)
         self.drv.pad_to_end()
         return self.drv.ll_is_valid(self.drv.send_cmd())
-
+    
     def crawl_forward(self, dist: int) -> bool:
         '''
         Command robot to move FORWARD by [dist] cm. IN A SLOW MANNER. 
@@ -197,7 +196,7 @@ class RobotController:
 
         self.drv.pad_to_end()
         return self.drv.ll_is_valid(self.drv.send_cmd())
-
+    
     def halt(self):
         '''
         Command robot to halt.
@@ -210,6 +209,7 @@ class RobotController:
         self.drv.add_motor_cmd_byte(self.drv.MotorCmd.HALT_CHAR)
         self.drv.pad_to_end()
         return self.drv.ll_is_valid(self.drv.send_cmd())
+
 
     def get_quaternion(self) -> Optional[list]:
         '''
@@ -269,11 +269,12 @@ class RobotController:
             return None
         return ret
 
+
     def get_ir_L(self) -> Optional[float]:
         '''
         Requests the LEFT cm-approximation derived from the reflected IR illuminance,
         given by the formula where x is the analog signal in mV.
-
+        
         Note that this measurement is not very accurate and is dependent on the surface reflectance.
         '''
 
@@ -293,7 +294,7 @@ class RobotController:
         '''
         Requests the RIGHT cm-approximation derived from the reflected IR illuminance,
         given by the formula where x is the analog signal in mV.
-
+        
         Note that this measurement is not very accurate and is dependent on the surface reflectance.
         '''
 
@@ -310,7 +311,7 @@ class RobotController:
         return ret
 
     def set_threshold_stop_distance_left(self, dist: int) -> bool:
-
+        
         self.validate_dist(dist)
         self.drv.construct_cmd()
         self.drv.add_cmd_byte(True)
@@ -321,7 +322,7 @@ class RobotController:
         return self.drv.ll_is_valid(self.drv.send_cmd())
 
     def set_threshold_stop_distance_right(self, dist: int) -> bool:
-
+        
         self.validate_dist(dist)
         self.drv.construct_cmd()
         self.drv.add_cmd_byte(True)
@@ -350,7 +351,7 @@ class RobotController:
         self.drv.add_args_bytes(999)
         self.drv.pad_to_end()
         return self.drv.ll_is_valid(self.drv.send_cmd())
-
+    
     async def sig_obst_callback(self, channel) -> None:
         self._inst_obstr_cb = channel
         if self._inst_obstr_cb is not None:
