@@ -52,6 +52,12 @@ OBSTACLE_ID_FIRST = 10  # Expect first capture to recognize Bullseye (id 10)
 SIGNAL_DEFAULT = "L"   # Symbol character for filename; server may not require this
 
 
+# Paths
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+IMAGES_DIR = os.path.join(SCRIPT_DIR, "images")
+os.makedirs(IMAGES_DIR, exist_ok=True)
+
+
 def _api_url_from_config() -> str:
     cfg = load_rpi_config() or {}
     api = cfg.get("api", {}) if isinstance(cfg, dict) else {}
@@ -70,14 +76,17 @@ def capture_image(obstacle_id: int, signal: str = SIGNAL_DEFAULT) -> str:
     """
     ts = int(time.time())
     filename = f"{ts}_{obstacle_id}_{signal}.jpg"
+    file_path = os.path.join(IMAGES_DIR, filename)
 
     def _run(cmd: str) -> bool:
         print(f"[CAM] {cmd}")
         code = os.system(cmd)
-        return code == 0 and os.path.exists(filename)
+        return code == 0 and os.path.exists(file_path)
 
     # Try raspistill first (legacy)
     raspistill = "raspistill"
+    # Quote the output path for safety on spaces
+    out_arg = f'"{file_path}"'
     cmd_raspi = " ".join([
         raspistill,
         "-e", "jpg",
@@ -92,10 +101,10 @@ def capture_image(obstacle_id: int, signal: str = SIGNAL_DEFAULT) -> str:
         "-br", "50",
         "-co", "10",
         "-sa", "10",
-        "-o", filename,
+        "-o", out_arg,
     ])
     if _run(cmd_raspi):
-        return filename
+        return file_path
 
     # # Fallback to libcamera-still
     # libcamera = "libcamera-still"
