@@ -299,7 +299,7 @@ class RaspberryPi:
 
     def android_sender(self) -> None:
         """
-        [Child process] Responsible for retrieving messages from android_queue and sending them over the Android link. 
+        [Child process] Responsible for retrieving messages from android_queue and sending them over the Android link.
         """
         while True:
             # Retrieve from queue
@@ -385,7 +385,7 @@ class RaspberryPi:
 
     def rpi_action(self):
         """
-        [Child Process] 
+        [Child Process]
         """
         while True:
             action: PiAction = self.rpi_action_queue.get()
@@ -498,8 +498,26 @@ class RaspberryPi:
             # rpistr += " --denoise " + denoises[denoise]
             # rpistr += " --metadata - --metadata-format txt >> PiLibtext.txt"
 
-            rpistr = f"libcamera-still -e jpg -n -t 500 -o {filename}"  # TODO: configure camera settings above later
+            # rpistr = f"libcamera-still -e jpg -n -t 500 -o {filename}"  # TODO: configure camera settings above later
             # rpistr =
+
+            rpi_str_parts = [
+                "raspistill",
+                "-e", "jpg",
+                "-n",
+                "-t", "500",
+                "-vf", "-hf",
+                "-q", "100",
+                "-sh", "40",
+                "-ISO", "100",
+                "-awb", "auto",
+                "-ss", "20000",
+                "-br", "50",
+                "-co", "10",
+                "-sa", "10",
+                "-o", filename,
+            ]
+            rpistr = " ".join(rpi_str_parts)
 
             os.system(rpistr)
 
