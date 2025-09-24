@@ -144,13 +144,9 @@ def extract_id(payload: dict) -> Optional[str]:
     """Extract the recognized id from payload, robust to nesting."""
     if not isinstance(payload, dict):
         return None
-    if "id" in payload:
+    if "obstacle_id" in payload:
         # id could be numeric or string
-        return str(payload.get("id"))
-    # common alternates
-    for key in ("result", "data"):  # nested containers
-        if key in payload and isinstance(payload[key], dict) and "id" in payload[key]:
-            return str(payload[key]["id"])
+        return str(payload.get("obstacle_id"))
     return None
 
 
