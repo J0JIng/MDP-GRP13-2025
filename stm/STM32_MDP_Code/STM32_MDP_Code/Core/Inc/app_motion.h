@@ -81,10 +81,10 @@ namespace AppMotion {
 
 		// Edit the following to control the servo's direction.
 
-		#define CENTER_POS_PWM 755.5
+		#define CENTER_POS_PWM 755.5   //  756.9
 		#define LEFT_DELTA 10         // was 10
-		#define RIGHT_DELTA 20        // was 10 then 15 20
-		#define LEFT_POS_PWM (CENTER_POS_PWM - RIGHT_DELTA)
+		#define RIGHT_DELTA 15        // was 10 then 15 20
+		#define LEFT_POS_PWM (CENTER_POS_PWM - LEFT_DELTA)
 		#define RIGHT_POS_PWM (CENTER_POS_PWM + RIGHT_DELTA)
 
 		typedef struct {
