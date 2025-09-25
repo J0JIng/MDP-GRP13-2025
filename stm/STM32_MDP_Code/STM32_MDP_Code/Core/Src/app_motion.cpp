@@ -74,9 +74,9 @@ namespace AppMotion {
 		};
 
 		float pid_param_sync[3] = {
-			0,
-			0,
-			0
+		    11,
+			4,
+			1
 		};
 
 		PID_init(&this->left_pid, PID_POSITION, pid_param_left, 7000, 7000);
@@ -128,17 +128,54 @@ namespace AppMotion {
 			// Move straight 100 m
 //			self->move(true, 100, 35, false, false);
 
-			// Turn right
+			// Move backwards 100 m
+//			self->move(false, 100, 35, false, false);
+
+			// Move Straight Turn right
 //			self->move(true, 10, 35, false, false);
 //			self->turn(true, true, false, 90);
 //			self->move(true, 10, 35, false, false);
+//
+//			// Move Straight Turn left
+//			self->move(true, 10, 35, false, false);
+//			self->turn(false, true, false, 90);
+//			self->move(true, 10, 35, false, false);
 
-			// Turn left
+			// Move Backward Turn left
+//			self->move(false, 10, 35, false, false);
+//			self->turn(true, false, false, 90);
+//			self->move(false, 10, 35, false, false);
+
+			// Move Backward Turn left
 //			self->move(false, 10, 35, false, false);
 //			self->turn(false, false, false, 90);
 //			self->move(false, 10, 35, false, false);
 
-//			while(1){} // uncomment this code if you are using any of the test code above.
+
+			// A5
+//			self->turn(false, true, false, 90);
+//		    self->move(true, 35, 35, false, false);
+//		    self->turn(true, true, false, 90);
+//		    self->turn(true, true, false, 90);
+//
+//
+//		    osDelay(500);
+//		    self->turn(false, true, false, 90);
+//			self->move(true, 35, 35, false, false);
+//			self->turn(true, true, false, 90);
+//			self->turn(true, true, false, 90);
+//
+//
+//		    osDelay(500);
+//		    self->turn(false, true, false, 90);
+//			self->move(true, 35, 35, false, false);
+//			self->turn(true, true, false, 90);
+//			self->turn(true, true, false, 90);
+
+
+
+
+			//while(1){} // uncomment this code if you are using any of the test code above.
 
 
 			if (osMessageQueueGetCount(ctx->mailbox.queue) > 0) {
