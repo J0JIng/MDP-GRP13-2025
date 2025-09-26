@@ -169,9 +169,9 @@ def extract_id(payload: dict) -> Optional[str]:
     """Extract the recognized id from payload, robust to nesting."""
     if not isinstance(payload, dict):
         return None
-    if "obstacle_id" in payload:
+    if "image_id" in payload:
         # id could be numeric or string
-        return str(payload.get("obstacle_id"))
+        return str(payload.get("image_id"))
     return None
 
 
@@ -209,6 +209,7 @@ def move_to_next_face(robot: RobotController, clockwise: bool = True) -> bool:
             ok = robot.turn_right(90, True) and ok
 
         ok = robot.halt() and ok
+        time.sleep(15)
 
     except Exception as e:
         print(f"[MOVE] Error moving to next face: {e}")
