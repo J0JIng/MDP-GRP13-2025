@@ -193,20 +193,22 @@ def move_to_next_face(robot: RobotController, clockwise: bool = True) -> bool:
     try:
         if clockwise:
             ok = robot.turn_right(90, True) and ok
-            time.sleep(SLEEP_TIME)
+            #time.sleep(SLEEP_TIME)
             ok = robot.move_forward(35) and ok
-            time.sleep(SLEEP_TIME)
-            ok = robot.turn_right(90, True) and ok
-            time.sleep(SLEEP_TIME)
-            ok = robot.turn_right(90, True) and ok
+            #time.sleep(SLEEP_TIME)
+            ok = robot.turn_left(90, True) and ok
+            #time.sleep(SLEEP_TIME)
+            ok = robot.turn_left(90, True) and ok
         else:
             ok = robot.turn_left(90, True) and ok
-            time.sleep(SLEEP_TIME)
+            #time.sleep(SLEEP_TIME)
             ok = robot.move_forward(35) and ok
-            time.sleep(SLEEP_TIME)
-            ok = robot.turn_left(90, True) and ok
-            time.sleep(SLEEP_TIME)
-            ok = robot.turn_left(90, True) and ok
+            #time.sleep(SLEEP_TIME)
+            ok = robot.turn_right(90, True) and ok
+            #time.sleep(SLEEP_TIME)
+            ok = robot.turn_right(90, True) and ok
+
+        ok = robot.halt() and ok
 
     except Exception as e:
         print(f"[MOVE] Error moving to next face: {e}")
@@ -260,7 +262,9 @@ def main():
         if not move_to_next_face(robot, clockwise=True):
             print("[WARN] Movement possibly not acknowledged; proceeding to capture")
         print(f"[STEP] Capture at face {i+1}")
+        time.sleep(5)
         sid, _payload = take_and_check(OBSTACLE_ID_FIRST, SIGNAL_DEFAULT)
+        time.sleep(5)
         if sid is None:
             print("[INFO] No id; continue to next face")
             continue
