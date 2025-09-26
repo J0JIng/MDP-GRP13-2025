@@ -8,6 +8,8 @@ app = Flask(__name__)
 CORS(app)
 model = load_model()
 # model = None
+
+
 @app.route('/status', methods=['GET'])
 def status():
     """
@@ -15,6 +17,7 @@ def status():
     :return: a json object with a key "result" and value "ok"
     """
     return jsonify({"result": "ok"})
+
 
 @app.route('/image', methods=['POST'])
 def image_predict():
@@ -29,11 +32,11 @@ def image_predict():
     constituents = file.filename.split("_")
     obstacle_id = constituents[1]
 
-    ## Week 8 ## 
+    ## Week 8 ##
     signal = constituents[2].strip(".jpg")
-    image_id, pred_conf = predict_image(filename, model, signal)
+    image_id = predict_image(filename, model, signal)
 
-    ## Week 9 ## 
+    ## Week 9 ##
     # We don't need to pass in the signal anymore
     # image_id = predict_image_week_9(filename,model)
 
@@ -41,9 +44,10 @@ def image_predict():
     result = {
         "obstacle_id": obstacle_id,
         "image_id": image_id,
-        "confidence": pred_conf 
+        # "confidence": pred_conf
     }
     return jsonify(result)
+
 
 @app.route('/stitch', methods=['GET'])
 def stitch():
@@ -55,6 +59,7 @@ def stitch():
     img2 = stitch_image_own()
     img2.show()
     return jsonify({"result": "ok"})
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

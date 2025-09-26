@@ -179,11 +179,11 @@ def predict_image(image, model, signal):
             "circle": 40
         }
         image_id = str(name_to_id[pred['name']]) if not isinstance(pred, str) else 'NA'
-        pred_conf = pred["confidence"]
+        # pred_conf = pred["confidence"]
 
         print(f"Final result: {image_id}")
-        print(f"Predicted confidence: {pred_conf:.4f}")
-        return image_id, pred_conf
+        # print(f"Predicted confidence: {pred_conf:.4f}")
+        return image_id
     except Exception as e:
         print(f"Final result: NA ({e})")
         return 'NA'

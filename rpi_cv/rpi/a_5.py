@@ -281,4 +281,5 @@ def main():
 
 if __name__ == "__main__":
     # main()
-    take_and_check()
+    id, _ = take_and_check()
+    print(id)
