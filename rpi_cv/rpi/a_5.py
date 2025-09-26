@@ -37,29 +37,29 @@ ROBOT_PORT = "/dev/ttyACM0"  # adjust as necessary for your Pi
 ROBOT_BAUD = 115200
 
 # Desired fixed standoff from each face (cm)
-STANDOFF_CM = 50
+# STANDOFF_CM = 50
 
-# Obstacle side length (cm). If rectangular, you can split into OB_SIDE_X_CM/OB_SIDE_Y_CM.
-#
-#
-# The obstacle is 10cm x 10cm.
-OB_SIDE_CM = 10
+# # Obstacle side length (cm). If rectangular, you can split into OB_SIDE_X_CM/OB_SIDE_Y_CM.
+# #
+# #
+# # The obstacle is 10cm x 10cm.
+# OB_SIDE_CM = 10
 
-# Distance to move between faces of the cuboid (cm). For a square footprint:
-# L = D + S/2 (from face centerline to corner orbit, then to next face centerline)
-LEG_CM = int(STANDOFF_CM + OB_SIDE_CM / 2)
+# # Distance to move between faces of the cuboid (cm). For a square footprint:
+# # L = D + S/2 (from face centerline to corner orbit, then to next face centerline)
+# LEG_CM = int(STANDOFF_CM + OB_SIDE_CM / 2)
 
-# Measured forward advance caused by a 90° arc-turn (cm). Calibrate on your robot.
-# Typical small skid-steer can advance ~5-15 cm during a 90° forward turn.
-# Start with 12 and adjust via the calibration steps below.
-ARC_ADVANCE_PER_90_CM = 12
+# # Measured forward advance caused by a 90° arc-turn (cm). Calibrate on your robot.
+# # Typical small skid-steer can advance ~5-15 cm during a 90° forward turn.
+# # Start with 12 and adjust via the calibration steps below.
+# ARC_ADVANCE_PER_90_CM = 12
 
 # When moving a "leg" immediately after a turn, subtract the turn's forward drift so the net leg is correct
 
 
-def compensated_leg(base_leg_cm: int, after_turns: int = 1) -> int:
-    comp = max(0, int(round(base_leg_cm - after_turns * ARC_ADVANCE_PER_90_CM)))
-    return max(0, comp)
+# def compensated_leg(base_leg_cm: int, after_turns: int = 1) -> int:
+#     comp = max(0, int(round(base_leg_cm - after_turns * ARC_ADVANCE_PER_90_CM)))
+#     return max(0, comp)
 
 
 # Initial obstacle assumptions
@@ -175,7 +175,7 @@ def extract_id(payload: dict) -> Optional[str]:
     return None
 
 
-def move_to_next_face(robot: RobotController, leg_cm: int = LEG_CM, clockwise: bool = True) -> bool:
+def move_to_next_face(robot: RobotController, clockwise: bool = True) -> bool:
     """Navigate around the cuboid corner to the adjacent face.
 
     The robot starts centered in front of one face (distance ~ 50cm) facing that face.
@@ -193,36 +193,21 @@ def move_to_next_face(robot: RobotController, leg_cm: int = LEG_CM, clockwise: b
     try:
         if clockwise:
             ok = robot.turn_right(90, True) and ok
-            wait_until_idle(robot)
-            time.sleep(SETTLE_SEC)
-            ok = robot.move_forward(compensated_leg(int(leg_cm), after_turns=1)) and ok
-            wait_until_idle(robot)
-            time.sleep(SETTLE_SEC)
-            ok = robot.turn_left(90, True) and ok
-            wait_until_idle(robot)
-            time.sleep(SETTLE_SEC)
-            ok = robot.move_forward(compensated_leg(int(leg_cm), after_turns=1)) and ok
-            wait_until_idle(robot)
-            time.sleep(SETTLE_SEC)
-            ok = robot.turn_left(90, True) and ok
-            wait_until_idle(robot)
-            time.sleep(SETTLE_SEC)
+            time.sleep(SLEEP_TIME)
+            ok = robot.move_forward(35) and ok
+            time.sleep(SLEEP_TIME)
+            ok = robot.turn_right(90, True) and ok
+            time.sleep(SLEEP_TIME)
+            ok = robot.turn_right(90, True) and ok
         else:
             ok = robot.turn_left(90, True) and ok
-            wait_until_idle(robot)
-            time.sleep(SETTLE_SEC)
-            ok = robot.move_forward(compensated_leg(int(leg_cm), after_turns=1)) and ok
-            wait_until_idle(robot)
-            time.sleep(SETTLE_SEC)
-            ok = robot.turn_right(90, True) and ok
-            wait_until_idle(robot)
-            time.sleep(SETTLE_SEC)
-            ok = robot.move_forward(compensated_leg(int(leg_cm), after_turns=1)) and ok
-            wait_until_idle(robot)
-            time.sleep(SETTLE_SEC)
-            ok = robot.turn_right(90, True) and ok
-            wait_until_idle(robot)
-            time.sleep(SETTLE_SEC)
+            time.sleep(SLEEP_TIME)
+            ok = robot.move_forward(35) and ok
+            time.sleep(SLEEP_TIME)
+            ok = robot.turn_left(90, True) and ok
+            time.sleep(SLEEP_TIME)
+            ok = robot.turn_left(90, True) and ok
+
     except Exception as e:
         print(f"[MOVE] Error moving to next face: {e}")
         return False
@@ -272,7 +257,7 @@ def main():
     faces_remaining = 3
     for i in range(1, faces_remaining + 1):
         print(f"[STEP] Move to face {i+1}")
-        if not move_to_next_face(robot, LEG_CM, clockwise=True):
+        if not move_to_next_face(robot, clockwise=True):
             print("[WARN] Movement possibly not acknowledged; proceeding to capture")
         print(f"[STEP] Capture at face {i+1}")
         sid, _payload = take_and_check(OBSTACLE_ID_FIRST, SIGNAL_DEFAULT)
