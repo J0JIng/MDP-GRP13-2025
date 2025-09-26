@@ -63,7 +63,7 @@ ROBOT_BAUD = 115200
 
 
 # Initial obstacle assumptions
-OBSTACLE_ID_FIRST = 10  # Expect first capture to recognize Bullseye (id 10)
+# OBSTACLE_ID_FIRST = 10  # Expect first capture to recognize Bullseye (id 10)
 SIGNAL_DEFAULT = "L"   # Symbol character for filename; server may not require this
 SLEEP_TIME = 5
 WAIT_TIMEOUT_SEC = 12.0  # maximum time to wait for a single command to complete
@@ -109,14 +109,14 @@ def _api_url_from_config() -> str:
     return f"http://{host}:{port}/image"
 
 
-def capture_image(obstacle_id: int, signal: str = SIGNAL_DEFAULT) -> str:
+def capture_image() -> str:
     """Capture an image of the current view.
 
     Primary method: raspistill with tuned params (matching image_rec.py)
     Returns the image filename or raises RuntimeError.
     """
     ts = int(time.time())
-    filename = f"{ts}_{obstacle_id}_{signal}.jpg"
+    filename = f"{ts}_{1}_L.jpg"
     file_path = os.path.join(IMAGES_DIR, filename)
 
     def _run(cmd: str) -> bool:
@@ -193,19 +193,19 @@ def move_to_next_face(robot: RobotController, clockwise: bool = True) -> bool:
     try:
         if clockwise:
             ok = robot.turn_right(90, True) and ok
-            #time.sleep(SLEEP_TIME)
+            # time.sleep(SLEEP_TIME)
             ok = robot.move_forward(35) and ok
-            #time.sleep(SLEEP_TIME)
+            # time.sleep(SLEEP_TIME)
             ok = robot.turn_left(90, True) and ok
-            #time.sleep(SLEEP_TIME)
+            # time.sleep(SLEEP_TIME)
             ok = robot.turn_left(90, True) and ok
         else:
             ok = robot.turn_left(90, True) and ok
-            #time.sleep(SLEEP_TIME)
+            # time.sleep(SLEEP_TIME)
             ok = robot.move_forward(35) and ok
-            #time.sleep(SLEEP_TIME)
+            # time.sleep(SLEEP_TIME)
             ok = robot.turn_right(90, True) and ok
-            #time.sleep(SLEEP_TIME)
+            # time.sleep(SLEEP_TIME)
             ok = robot.turn_right(90, True) and ok
 
         ok = robot.halt() and ok
@@ -217,10 +217,10 @@ def move_to_next_face(robot: RobotController, clockwise: bool = True) -> bool:
     return bool(ok)
 
 
-def take_and_check(obstacle_id_hint: int, signal: str = SIGNAL_DEFAULT) -> Tuple[Optional[str], Optional[dict]]:
+def take_and_check() -> Tuple[Optional[str], Optional[dict]]:
     """Capture and POST image; return (id_str, payload)."""
     try:
-        fn = capture_image(obstacle_id_hint, signal)
+        fn = capture_image()
     except Exception as e:
         print(f"[CAM] Capture failed: {e}")
         return None, None
@@ -250,7 +250,7 @@ def main():
 
     # Start in front of side 1 (50cm away). Immediately capture.
     print("[STEP] Side 1 capture (expect id=10 Bullseye)")
-    id1, _ = take_and_check(OBSTACLE_ID_FIRST, SIGNAL_DEFAULT)
+    id1, _ = take_and_check()
     if id1 is None:
         print("[WARN] No id returned; continuing walk-around anyway")
     else:
@@ -264,7 +264,7 @@ def main():
             print("[WARN] Movement possibly not acknowledged; proceeding to capture")
         print(f"[STEP] Capture at face {i+1}")
         time.sleep(5)
-        sid, _payload = take_and_check(OBSTACLE_ID_FIRST, SIGNAL_DEFAULT)
+        sid, _payload = take_and_check()
         time.sleep(5)
         if sid is None:
             print("[INFO] No id; continue to next face")
@@ -279,4 +279,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    take_and_check()
