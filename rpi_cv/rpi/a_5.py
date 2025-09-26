@@ -158,6 +158,7 @@ def post_image(filename: str) -> dict:
         resp = requests.post(url, files={"file": (os.path.basename(filename), f)})
     try:
         data = resp.json()
+        print(data)
     except Exception:
         data = {"raw": resp.text}
     if resp.status_code != 200:
