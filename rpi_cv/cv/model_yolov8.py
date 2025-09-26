@@ -127,9 +127,10 @@ def predict_image(image, model, signal):
 
         preds = _results_to_dicts_v8(r)
         pred = 'NA'
-
-        # Filter out Bullseye by name first
-        preds = [d for d in preds if d["name"] != "Bullseye"]
+    # NOTE: Previously Bullseye was filtered out here, causing Bullseye-only
+    # detections to return 'NA'. That line has been removed so Bullseye
+    # can now be returned (mapped to 10). If you still need to ignore it
+    # in certain scenarios, add a conditional flag instead of a hard filter.
 
         # Detected 1 object
         if len(preds) == 1:
@@ -178,7 +179,14 @@ def predict_image(image, model, signal):
             "up arrow": 36, "down arrow": 37, "right arrow": 38, "left arrow": 39,
             "circle": 40
         }
-        image_id = str(name_to_id[pred['name']]) if not isinstance(pred, str) else 'NA'
+        if not isinstance(pred, str):
+            print(f"Predicted name: {pred['name']}")
+            print(f"type(pred): {type(pred)}")
+            image_id = str(name_to_id.get(pred['name'], 'NA'))
+        else:
+            print("Predicted name: NA (no valid detection)")
+            print(f"type(pred): {type(pred)}")
+            image_id = 'NA'
         # pred_conf = pred["confidence"]
 
         print(f"Final result: {image_id}")

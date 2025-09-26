@@ -280,6 +280,6 @@ def main():
 
 
 if __name__ == "__main__":
-    # main()
-    id, _ = take_and_check()
-    print(id)
+    main()
+    # id, _ = take_and_check()
+    # print(id)
