@@ -4,5 +4,5 @@ api:
   image_port: 5001
   # Timeouts (seconds) for outbound HTTP calls from RPi
   timeouts:
-    algo: 3   # /path requests to algorithm server
-    image: 3  # /stitch and /image requests to image server
+    algo: 10   # /path requests to algorithm server
+    image: 10  # /stitch and /image requests to image server
