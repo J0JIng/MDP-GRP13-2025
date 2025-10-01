@@ -824,3 +824,8 @@ class RaspberryPi:
         algo_ok = probe(f"http://{API_IP}:{ALGO_API_PORT}/status", "Algo")
 
         return image_ok and algo_ok
+
+
+if __name__ == "__main__":
+    rpi = RaspberryPi()
+    rpi.start()
