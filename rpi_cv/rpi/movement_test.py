@@ -29,3 +29,7 @@ def movement_test():
         print("  WARN: forward 20 not acknowledged")
     else:
         print("  OK")
+
+
+if __name__ == "__main__":
+    movement_test()
