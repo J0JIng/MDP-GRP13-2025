@@ -331,6 +331,7 @@ class RaspberryPi:
 
             try:
                 self.android_link.send(message)
+                self.logger.debug(f"Sent to Android: {message.jsonify}")
             except OSError:
                 self.android_dropped.set()
                 self.logger.debug("Event set: Android dropped")
