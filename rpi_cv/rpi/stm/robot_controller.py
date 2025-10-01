@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Optional, Callable
 import asyncio
+import time
 
 from stm.serial_cmd_base_ll import SerialCmdBaseLL
 import RPi.GPIO as GPIO
@@ -36,11 +37,15 @@ class RobotController:
     PIN_COMMAND: int = 15  # TODO DEFINE
     PIN_OBSTACLE: int = 14  # TODO DEFINE
 
-    def __init__(self, port: str, baudrate: int, _inst_obstr_cb: Optional[Callable[..., None]] = None):
+    MOTION_POLL_INTERVAL_S: float = 0.05
+
+    def __init__(self, port: str, baudrate: int, _inst_obstr_cb: Optional[Callable[..., None]] = None,
+                 motion_complete_timeout: Optional[float] = None):
         self.drv = SerialCmdBaseLL(port, baudrate)
         GPIO.setmode(GPIO.BCM)
         self.cmd_pin_state = PinState.Z
         self.obstr_pin_state = PinState.Z
+        self.motion_complete_timeout = motion_complete_timeout
 
         GPIO.setup(self.PIN_COMMAND, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # LED pin set as output
         GPIO.setup(self.PIN_OBSTACLE, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # PWM pin set as output
@@ -90,7 +95,8 @@ class RobotController:
         if no_brakes:
             self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LINEAR_CHAR)
         self.drv.pad_to_end()
-        return self.drv.ll_is_valid(self.drv.send_cmd())
+        ack = self.drv.ll_is_valid(self.drv.send_cmd())
+        return ack and self._wait_for_motion_complete()
 
     def move_backward(self, dist: int, no_brakes: bool = False) -> bool:
         '''
@@ -110,7 +116,8 @@ class RobotController:
         if no_brakes:
             self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LINEAR_CHAR)
         self.drv.pad_to_end()
-        return self.drv.ll_is_valid(self.drv.send_cmd())
+        ack = self.drv.ll_is_valid(self.drv.send_cmd())
+        return ack and self._wait_for_motion_complete()
 
     def crawl_forward(self, dist: int) -> bool:
         '''
@@ -128,7 +135,8 @@ class RobotController:
         self.drv.add_args_bytes(dist)
         self.drv.add_motor_cmd_byte(self.drv.MotorCmd.CRAWL_CHAR)
         self.drv.pad_to_end()
-        return self.drv.ll_is_valid(self.drv.send_cmd())
+        ack = self.drv.ll_is_valid(self.drv.send_cmd())
+        return ack and self._wait_for_motion_complete()
 
     def crawl_backward(self, dist: int) -> bool:
         '''
@@ -146,7 +154,8 @@ class RobotController:
         self.drv.add_args_bytes(dist)
         self.drv.add_motor_cmd_byte(self.drv.MotorCmd.CRAWL_CHAR)
         self.drv.pad_to_end()
-        return self.drv.ll_is_valid(self.drv.send_cmd())
+        ack = self.drv.ll_is_valid(self.drv.send_cmd())
+        return ack and self._wait_for_motion_complete()
 
     def turn_left(self, angle: int, dir: bool, no_brakes: bool = False) -> bool:
         '''
@@ -171,7 +180,8 @@ class RobotController:
             self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LINEAR_CHAR)
 
         self.drv.pad_to_end()
-        return self.drv.ll_is_valid(self.drv.send_cmd())
+        ack = self.drv.ll_is_valid(self.drv.send_cmd())
+        return ack and self._wait_for_motion_complete()
 
     def turn_right(self, angle: int, dir: bool, no_brakes: bool = False) -> bool:
         '''
@@ -196,7 +206,8 @@ class RobotController:
             self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LINEAR_CHAR)
 
         self.drv.pad_to_end()
-        return self.drv.ll_is_valid(self.drv.send_cmd())
+        ack = self.drv.ll_is_valid(self.drv.send_cmd())
+        return ack and self._wait_for_motion_complete()
 
     def halt(self):
         '''
@@ -209,7 +220,8 @@ class RobotController:
         self.drv.add_module_byte(self.drv.Modules.MOTOR)
         self.drv.add_motor_cmd_byte(self.drv.MotorCmd.HALT_CHAR)
         self.drv.pad_to_end()
-        return self.drv.ll_is_valid(self.drv.send_cmd())
+        ack = self.drv.ll_is_valid(self.drv.send_cmd())
+        return ack and self._wait_for_motion_complete()
 
     def get_quaternion(self) -> Optional[list]:
         '''
@@ -376,3 +388,15 @@ class RobotController:
 
     def poll_is_moving(self):
         return GPIO.input(self.PIN_COMMAND)
+
+    def _wait_for_motion_complete(self) -> bool:
+        timeout = self.motion_complete_timeout
+        start = time.monotonic()
+        while True:
+            is_moving = self.poll_is_moving() == GPIO.HIGH
+            if not is_moving:
+                return True
+            if timeout is not None and (time.monotonic() - start) >= timeout:
+                print("[CONTROLLER] WARN: Motion completion wait timed out")
+                return False
+            time.sleep(self.MOTION_POLL_INTERVAL_S)
