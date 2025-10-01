@@ -30,9 +30,12 @@ class STMLink(Link):
     #### Manual mode commands
     - `FW--`: Move forward indefinitely
     - `BW--`: Move backward indefinitely
-    - `TL--`: Steer left indefinitely
-    - `TR--`: Steer right indefinitely
+    - `TL--`: Steer left indefinitely (approx. 90° forward turn)
+    - `TR--`: Steer right indefinitely (approx. 90° forward turn)
+    - `FSnn`: Crawl/slow forward movement by `nn` cm (indefinite with `--`)
+    - `BSnn`: Crawl/slow backward movement by `nn` cm (indefinite with `--`)
     - `STOP`: Stop all servos
+    - `RS00`: Reset sensors/gyro (software acknowledgement only)
 
     ### STM32 to RPi
     After every command, an acknowledgement should be provided to gate the next command.
@@ -99,58 +102,144 @@ class STMLink(Link):
             self.logger.debug("Ignoring non-motion token: %s", token)
             return
 
-        # Lazily initialise RobotController using configured port/baud.
-        try:
-            if self.robot is None:
-                port = self.config["serial_port"]["id"]
-                baud = self.config["serial_port"]["baud_rate"]
-                self.logger.info("Initialising RobotController (port=%s baud=%s)", port, baud)
-                self.robot = RobotController(port, baud)
-        except Exception as e:
-            self.logger.error("Failed to initialise RobotController: %s", e)
-            return
+        def _parse_distance(segment: str) -> Optional[int]:
+            if segment == "--":
+                return 999  # Indefinite distance sentinel understood by RobotController
+            if segment.isdigit():
+                return int(segment)
+            return None
 
-        r = self.robot
+        def _parse_angle(segment: str) -> Optional[int]:
+            if segment == "--":
+                return 90  # Treat indefinite turn as a standard 90° sweep
+            if segment.isdigit():
+                return int(segment)
+            return None
+
+        def _ensure_robot() -> Optional[RobotController]:
+            if self.robot is None:
+                try:
+                    port = self.config["serial_port"]["id"]
+                    baud = self.config["serial_port"]["baud_rate"]
+                    self.logger.info("Initialising RobotController (port=%s baud=%s)", port, baud)
+                    self.robot = RobotController(port, baud)
+                except Exception as exc:
+                    self.logger.error("Failed to initialise RobotController: %s", exc)
+                    return None
+            return self.robot
+
         success = False
+        performed_action = False
 
         try:
             # Halt commands
             if token in {"STOP", "HALT"}:
-                success = bool(r.halt())
+                robot = _ensure_robot()
+                success = bool(robot and robot.halt())
+                performed_action = robot is not None
 
             # Indefinite linear motion
             elif token == "FW--":
-                success = bool(r.move_forward(999))
+                robot = _ensure_robot()
+                success = bool(robot and robot.move_forward(999))
+                performed_action = robot is not None
             elif token == "BW--":
-                success = bool(r.move_backward(999))
+                robot = _ensure_robot()
+                success = bool(robot and robot.move_backward(999))
+                performed_action = robot is not None
 
             # Fixed-format 90-degree turns
             elif token in {"FR00", "FL00", "BR00", "BL00"}:
-                if token == "FR00":
-                    success = bool(r.turn_right(90, True))
-                elif token == "FL00":
-                    success = bool(r.turn_left(90, True))
-                elif token == "BR00":
-                    success = bool(r.turn_right(90, False))
-                elif token == "BL00":
-                    success = bool(r.turn_left(90, False))
+                robot = _ensure_robot()
+                if robot is not None:
+                    if token == "FR00":
+                        success = bool(robot.turn_right(90, True))
+                    elif token == "FL00":
+                        success = bool(robot.turn_left(90, True))
+                    elif token == "BR00":
+                        success = bool(robot.turn_right(90, False))
+                    elif token == "BL00":
+                        success = bool(robot.turn_left(90, False))
+                    performed_action = True
 
             # Linear movement with numeric distance: FWnn / BWnn
             elif token.startswith("FW") and token[2:].isdigit():
                 dist = int(token[2:])
-                success = bool(r.move_forward(dist))
+                robot = _ensure_robot()
+                success = bool(robot and robot.move_forward(dist))
+                performed_action = robot is not None
             elif token.startswith("BW") and token[2:].isdigit():
                 dist = int(token[2:])
-                success = bool(r.move_backward(dist))
+                robot = _ensure_robot()
+                success = bool(robot and robot.move_backward(dist))
+                performed_action = robot is not None
+
+            # Crawl/slow movement: FSnn / BSnn
+            elif token.startswith("FS"):
+                dist = _parse_distance(token[2:])
+                if dist is None:
+                    self.logger.error("Invalid FS token format: %s", token)
+                    success = True  # Prevent deadlock; caller will continue
+                else:
+                    robot = _ensure_robot()
+                    success = bool(robot and robot.crawl_forward(dist))
+                    performed_action = robot is not None
+            elif token.startswith("BS"):
+                dist = _parse_distance(token[2:])
+                if dist is None:
+                    self.logger.error("Invalid BS token format: %s", token)
+                    success = True
+                else:
+                    robot = _ensure_robot()
+                    success = bool(robot and robot.crawl_backward(dist))
+                    performed_action = robot is not None
+
+            # Manual steering: TLxx / TRxx (xx degrees, '--' treated as standard 90°)
+            elif token.startswith("TL"):
+                angle = _parse_angle(token[2:])
+                if angle is None:
+                    self.logger.error("Invalid TL token format: %s", token)
+                    success = True
+                else:
+                    robot = _ensure_robot()
+                    success = bool(robot and robot.turn_left(angle, True, no_brakes=(token[2:] == "--")))
+                    performed_action = robot is not None
+            elif token.startswith("TR"):
+                angle = _parse_angle(token[2:])
+                if angle is None:
+                    self.logger.error("Invalid TR token format: %s", token)
+                    success = True
+                else:
+                    robot = _ensure_robot()
+                    success = bool(robot and robot.turn_right(angle, True, no_brakes=(token[2:] == "--")))
+                    performed_action = robot is not None
+
+            # Gyro reset acknowledgement – handled on STM32 side, but we propagate ACK.
+            elif token == "RS00":
+                success = True
+                self.logger.info("Acknowledging RS00 command (handled on STM32 firmware).")
+
+            # Reserve misc maintenance tokens with soft success to keep queue flowing
+            elif token.startswith(("A", "C", "DT", "ZZ")):
+                self.logger.warning(
+                    "Received maintenance token %s with no local handler; acknowledging to keep pipeline moving.",
+                    token)
+                success = True
 
             else:
                 self.logger.warning("Unrecognized motion token: %s", token)
-                return
+                success = True
 
-            if success:
-                self.logger.info("Executed robot motion: %s", token)
+            if performed_action:
+                if success:
+                    self.logger.info("Executed robot motion: %s", token)
+                else:
+                    self.logger.warning("Robot rejected or failed to execute: %s", token)
             else:
-                self.logger.warning("Robot rejected or failed to execute: %s", token)
+                if success:
+                    self.logger.debug("No-op token acknowledged without hardware action: %s", token)
+                else:
+                    self.logger.warning("Token %s did not trigger hardware action and was not acknowledged.", token)
         except Exception as e:
             self.logger.error("Error executing token %s: %s", token, e)
         finally:
