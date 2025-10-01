@@ -8,23 +8,26 @@ def movement_test():
     robot = RobotController(ROBOT_PORT, ROBOT_BAUD)
 
     for i in range(4):
-        ok = True
         print(f"Movement test iteration {i+1}/4")
 
         print("Moving forward 20cm...")
-        ok = robot.move_forward(20) and ok
+        ok = robot.move_forward(20)
         if not ok:
             print("  WARN: forward 20 not acknowledged")
-        else:
-            print("  OK")
+            return False
+        print("  OK")
 
         print("Turning right 90 degrees...")
-        ok = robot.turn_right(90, True) and ok
+        ok = robot.turn_right(90, True)
         if not ok:
             print("  WARN: turn right 90 not acknowledged")
-        else:
-            print("  OK")
+            return False
+        print("  OK")
+
+    return True
 
 
 if __name__ == "__main__":
-    movement_test()
+    if not movement_test():
+        print("Movement test aborted due to earlier failure.")
+        raise SystemExit(1)
