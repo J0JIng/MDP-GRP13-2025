@@ -252,7 +252,7 @@ class STMLink(Link):
             Optional[str]: 'ACK' if last send succeeded, 'NACK' if it failed, None if unknown.
         """
         if self._last_ack is None:
-            self.logger.debug("No pending ACK/NACK to report")
+            # self.logger.debug("No pending ACK/NACK to report")
             return None
         msg = "ACK" if self._last_ack else "NACK"
         # Reset after reading to emulate one-shot acknowledgement

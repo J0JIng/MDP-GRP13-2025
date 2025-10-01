@@ -256,7 +256,7 @@ class RaspberryPi:
             message: Optional[str] = self.stm_link.recv()
 
             if message is None:
-                self.logger.warning("No message received from STM32.")
+                # self.logger.warning("No message received from STM32.")
                 continue
 
             if message.startswith("ACK"):
