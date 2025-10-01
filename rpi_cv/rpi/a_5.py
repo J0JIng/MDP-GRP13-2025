@@ -209,8 +209,8 @@ def move_to_next_face(robot: RobotController, clockwise: bool = True) -> bool:
             # time.sleep(SLEEP_TIME)
             ok = robot.turn_right(90, True) and ok
 
-        ok = robot.halt() and ok
-        time.sleep(15)
+        # ok = robot.halt() and ok
+        # time.sleep(15)
 
     except Exception as e:
         print(f"[MOVE] Error moving to next face: {e}")
