@@ -414,7 +414,7 @@ class RaspberryPi:
         The response is then forwarded back to the android
         :param obstacle_id_with_signal: the current obstacle ID followed by underscore followed by signal
         """
-        API_IP = self.config['api']['ip']
+        API_IP = self.config['api']['pc_ip']
         IMAGE_API_PORT = self.config['api']['image_port']
 
         obstacle_id, signal = obstacle_id_with_signal.split("_")
@@ -582,7 +582,7 @@ class RaspberryPi:
         Requests for a series of commands and the path from the Algo API.
         The received commands and path are then queued in the respective queues
         """
-        API_IP = self.config['api']['ip']
+        API_IP = self.config['api']['pc_ip']
         ALGO_API_PORT = self.config['api']['algo_port']
         timeouts = (self.config.get('api', {}) or {}).get('timeouts', {})
         algo_timeout = int(timeouts.get('algo', 3))
@@ -737,7 +737,7 @@ class RaspberryPi:
 
     def request_stitch(self):
         """Sends a stitch request to the image recognition API to stitch the different images together"""
-        API_IP = self.config['api']['ip']
+        API_IP = self.config['api']['pc_ip']
         IMAGE_API_PORT = self.config['api']['image_port']
         timeouts = (self.config.get('api', {}) or {}).get('timeouts', {})
         image_timeout = int(timeouts.get('image', 3))
@@ -798,7 +798,7 @@ class RaspberryPi:
         Returns:
             bool: True if both running, False otherwise.
         """
-        API_IP = self.config['api']['ip']
+        API_IP = self.config['api']['pc_ip']
         IMAGE_API_PORT = self.config['api']['image_port']
         ALGO_API_PORT = self.config['api']['algo_port']
 
