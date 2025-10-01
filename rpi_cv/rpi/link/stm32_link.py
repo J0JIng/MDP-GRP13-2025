@@ -56,6 +56,11 @@ class STMLink(Link):
         self.config = load_stm32_config()
         self.robot: Optional[RobotController] = None
         self._last_ack: Optional[bool] = None
+        self._ack_queue = None
+
+    def set_ack_queue(self, ack_queue) -> None:
+        """Bind a multiprocessing-aware queue to publish acknowledgement results."""
+        self._ack_queue = ack_queue
 
     def connect(self):
         """Initialise RobotController using configured serial port and baud rate."""
@@ -244,6 +249,11 @@ class STMLink(Link):
             self.logger.error("Error executing token %s: %s", token, e)
         finally:
             self._last_ack = success
+            if self._ack_queue is not None:
+                try:
+                    self._ack_queue.put(success)
+                except Exception as exc:
+                    self.logger.debug("Failed to enqueue ack result: %s", exc)
 
     def recv(self) -> Optional[str]:
         """Return last command acknowledgement as 'ACK' or 'NACK'.

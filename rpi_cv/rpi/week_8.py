@@ -40,6 +40,7 @@ class RaspberryPi:
         self.unpause = self.manager.Event()
 
         self.movement_lock = self.manager.Lock()
+        self.retrylock = self.manager.Lock()
 
         self.android_queue = self.manager.Queue()  # Messages to send to Android
         # Messages that need to be processed by RPi
@@ -48,6 +49,9 @@ class RaspberryPi:
         self.command_queue = self.manager.Queue()
         # X,Y,D coordinates of the robot after execution of a command
         self.path_queue = self.manager.Queue()
+        # Ack results from STM32 motor execution
+        self.stm_ack_queue = self.manager.Queue()
+        self.stm_link.set_ack_queue(self.stm_ack_queue)
 
         self.proc_recv_android = None
         self.proc_recv_stm32 = None
@@ -253,10 +257,13 @@ class RaspberryPi:
         """
         while True:
 
-            message: Optional[str] = self.stm_link.recv()
+            try:
+                success = self.stm_ack_queue.get(timeout=0.5)
+                message: Optional[str] = "ACK" if success else "NACK"
+            except queue.Empty:
+                message = self.stm_link.recv()
 
             if message is None:
-                # self.logger.warning("No message received from STM32.")
                 continue
 
             if message.startswith("ACK"):
@@ -291,8 +298,22 @@ class RaspberryPi:
                         )
                     )
 
+                except queue.Empty:
+                    self.logger.debug("Path queue empty when processing ACK; skipping coordinate update.")
                 except Exception:
                     self.logger.warning("Tried to release a released lock!")
+            elif message.startswith("NACK"):
+                self.logger.warning("Received NACK from STM32; releasing movement lock to avoid deadlock.")
+                try:
+                    self.movement_lock.release()
+                except Exception:
+                    self.logger.debug("Movement lock already released after NACK.")
+                if hasattr(self, "retrylock"):
+                    try:
+                        self.retrylock.release()
+                    except Exception:
+                        pass
+                self.android_queue.put(AndroidMessage('error', 'Robot reported failure executing a movement command.'))
             else:
                 self.logger.warning(
                     f"Ignored unknown message from STM: {message}")
