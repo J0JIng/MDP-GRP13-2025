@@ -46,15 +46,15 @@ class RobotController:
 
     def __init__(self, port: str, baudrate: int, _inst_obstr_cb: Optional[Callable[..., None]] = None):
         self.drv = SerialCmdBaseLL(port, baudrate)
-        
-        sensor = DistanceSensor(echo=24, trigger=23, max_distance=4.0)
+
+        self.distance_sensor = DistanceSensor(echo=24, trigger=23, max_distance=4.0)
         # GPIO.setmode(GPIO.BCM)
         # self.cmd_pin_state = PinState.Z
         # self.obstr_pin_state = PinState.Z
 
-        # GPIO.setup(self.PIN_COMMAND, GPIO.IN, pull_up_down=GPIO.PUD_UP) 
+        # GPIO.setup(self.PIN_COMMAND, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         # GPIO.setup(self.PIN_OBSTACLE, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        
+
         # if GPIO.input(self.PIN_COMMAND) == GPIO.HIGH:
         #     print("[CONTROLLER] WARN: COMMAND PIN N/C OR UNEXPECTED STATE")
         # else:
@@ -64,10 +64,10 @@ class RobotController:
         #     print("[CONTROLLER] WARN: OBSTACLE PIN N/C OR UNEXPECTED STATE")
         # else:
         #     self.obstr_pin_state = PinState.LOW
-        
+
         # self._inst_obstr_cb = _inst_obstr_cb
         # if self._inst_obstr_cb is not None:
-        #     GPIO.add_event_detect(self.PIN_OBSTACLE, 
+        #     GPIO.add_event_detect(self.PIN_OBSTACLE,
         #                           GPIO.RISING,
         #                           callback=self.sig_obst_callback,
         #                           bouncetime=50)
@@ -85,6 +85,44 @@ class RobotController:
         '''
         if angle < 0 or angle > 359:
             raise ValueError("Invalid angle, must be 0-359")
+
+    def move_forward_until_obstacle(self, no_brakes: bool = False, retry: bool = True) -> bool:
+        '''
+        Command robot to move FORWARD until obstacle detected.
+        returns True if command was acknowledged, False otherwise.
+        '''
+        attempts = 3 if retry else 1
+
+        for _ in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.MOTOR)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.FWD_CHAR)
+            self.drv.add_args_bytes(999)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.PAD_CHAR)
+            if no_brakes:
+                self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LINEAR_CHAR)
+            self.drv.pad_to_end()
+
+            ack = self.drv.ll_is_valid(self.drv.send_cmd())
+            if not ack:
+                continue
+
+            time.sleep(self.MOVE_INITIAL_DELAY_S)
+
+            try:
+                detection = self.poll_obstruction()
+            except Exception:
+                detection = None
+
+            halted = self.halt(retry=False)
+            if not halted:
+                return False
+
+            if detection:
+                return True
+
+        return False
 
     def move_forward(self, dist: int, no_brakes: bool = False, retry: bool = True) -> bool:
         '''
@@ -111,7 +149,7 @@ class RobotController:
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if ack:
                 return self._wait_for_motion_complete()
-        
+
         return False
 
     def move_backward(self, dist: int, no_brakes: bool = False, retry: bool = True) -> bool:
@@ -139,7 +177,7 @@ class RobotController:
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if ack:
                 return self._wait_for_motion_complete()
-        
+
         return False
 
     def crawl_forward(self, dist: int) -> bool:
@@ -213,7 +251,7 @@ class RobotController:
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if ack:
                 return self._wait_for_motion_complete()
-        
+
         return False
 
     def turn_right(self, angle: int, dir: bool, no_brakes: bool = False, retry: bool = True) -> bool:
@@ -245,10 +283,10 @@ class RobotController:
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if ack:
                 return self._wait_for_motion_complete()
-        
+
         return False
 
-    def halt(self, retry: bool = True) :
+    def halt(self, retry: bool = True):
         '''
         Command robot to halt.
         returns True if command was acknowledged, False otherwise.
@@ -264,7 +302,7 @@ class RobotController:
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if ack:
                 return self._wait_for_motion_complete()
-        
+
         return False
 
     def _wait_for_motion_complete(self) -> bool:
@@ -461,17 +499,21 @@ class RobotController:
         return ret
 
     def poll_obstruction(self):
+        sensor = getattr(self, "distance_sensor", None)
+        if sensor is None:
+            return None
+
         try:
             while True:
                 # sensor.distance is in meters (float 0.0–1.0+)
-                print(f"{sensor.distance * 100:.1f} cm")
-                distance = float(sensor.distance * 100)
-                if distance <= 5.0:
+                distance_cm = float(sensor.distance * 100)
+                print(f"{distance_cm:.1f} cm")
+                if distance_cm <= 5.0:
                     return True
                 sleep(0.1)
 
         except KeyboardInterrupt:
-            pass
+            return None
 
     def poll_is_moving(self):
         self.drv.construct_cmd()
