@@ -4,6 +4,7 @@ import bluetooth
 from config.load_config import load_bt_config
 from link.base import Link
 from message.android import AndroidMessage
+import time
 
 
 class AndroidLink(Link):
@@ -178,7 +179,6 @@ class AndroidLink(Link):
                 )
 
                 if throttle_ms > 0:
-                    import time
                     time.sleep(throttle_ms / 1000.0)
 
             except OSError as e:
@@ -198,6 +198,7 @@ class AndroidLink(Link):
                     max_attempts,
                     e,
                 )
+            time.sleep(1)
 
     def recv(self) -> Optional[str]:
         """Receive one complete JSON message from Android.
