@@ -16,9 +16,18 @@ from ultralytics import YOLO
 for d in ["uploads", "runs", os.path.join("runs", "originals"), "own_results"]:
     os.makedirs(d, exist_ok=True)
 
-
-# def get_random_string(length):
-#     return ''.join(random.choice(string.ascii_letters) for _ in range(length))
+# mapping logic dictionary
+NAME_TO_ID = {
+    "NA": 'NA',
+    "Bullseye": 10,
+    "one": 11, "two": 12, "three": 13, "four": 14, "five": 15,
+    "six": 16, "seven": 17, "eight": 18, "nine": 19,
+    "A": 20, "B": 21, "C": 22, "D": 23, "E": 24, "F": 25, "G": 26, "H": 27,
+    "S": 28, "T": 29, "U": 30, "V": 31, "W": 32, "X": 33, "Y": 34, "Z": 35,
+    "up": 36, "down": 37, "right": 38, "left": 39,
+    "up arrow": 36, "down arrow": 37, "right arrow": 38, "left arrow": 39,
+    "circle": 40
+}
 
 
 def load_model(weights_path="./weights/detectionv1.pt", device=None):
@@ -41,19 +50,8 @@ def draw_own_bbox(img, x1, y1, x2, y2, label, color=(36, 255, 12), text_color=(0
     Draw bbox + label and save both raw and annotated images in own_results/
     (kept from your original code)
     """
-    name_to_id = {
-        "NA": 'NA',
-        "Bullseye": 10,
-        "one": 11, "two": 12, "three": 13, "four": 14, "five": 15,
-        "six": 16, "seven": 17, "eight": 18, "nine": 19,
-        "A": 20, "B": 21, "C": 22, "D": 23, "E": 24, "F": 25, "G": 26, "H": 27,
-        "S": 28, "T": 29, "U": 30, "V": 31, "W": 32, "X": 33, "Y": 34, "Z": 35,
-        "up": 36, "down": 37, "right": 38, "left": 39,
-        "up Arrow": 36, "down Arrow": 37, "right Arrow": 38, "left Arrow": 39,
-        "circle": 40
-    }
 
-    label = f"{label}-{name_to_id.get(label, 'NA')}"
+    label = f"{label}-{NAME_TO_ID.get(label, 'NA')}"
     x1, x2, y1, y2 = int(x1), int(x2), int(y1), int(y2)
     rand = str(int(time.time()))
 
@@ -170,21 +168,10 @@ def predict_image(image, model, signal):
                                 break
                         pred = chosen if chosen else sorted(pred_shortlist, key=lambda d: d["bboxArea"])[-1]
 
-        name_to_id = {
-            "NA": "NA",
-            "Bullseye": 10,
-            "one": 11, "two": 12, "three": 13, "four": 14, "five": 15,
-            "six": 16, "seven": 17, "eight": 18, "nine": 19,
-            "A": 20, "B": 21, "C": 22, "D": 23, "E": 24, "F": 25, "G": 26, "H": 27,
-            "S": 28, "T": 29, "U": 30, "V": 31, "W": 32, "X": 33, "Y": 34, "Z": 35,
-            "up": 36, "down": 37, "right": 38, "left": 39,
-            "up arrow": 36, "down arrow": 37, "right arrow": 38, "left arrow": 39,
-            "circle": 40
-        }
 
         if isinstance(pred, dict):
             draw_own_bbox(np.array(img_pil), pred['xmin'], pred['ymin'], pred['xmax'], pred['ymax'], pred['name'])
-            image_id = str(name_to_id[pred['name']])
+            image_id = str(NAME_TO_ID[pred['name']])
             pred_conf = float(pred["confidence"])
         else:
             image_id = "NA"
@@ -222,13 +209,7 @@ def predict_image_week_9(image, model):
         if not isinstance(pred, str):
             draw_own_bbox(np.array(img_pil), pred['xmin'], pred['ymin'], pred['xmax'], pred['ymax'], pred['name'])
 
-    name_to_id = {
-        "NA": 'NA',
-        "Bullseye": 10,
-        "right": 38, "left": 39,
-        "right arrow": 38, "left arrow": 39,
-    }
-    image_id = str(name_to_id[pred['name']]) if not isinstance(pred, str) else 'NA'
+    image_id = str(NAME_TO_ID[pred['name']]) if not isinstance(pred, str) else 'NA'
     return image_id
 
 def stitch_image_own():
@@ -320,7 +301,7 @@ def stitch_image_own():
 #         # if not isinstance(pred, str):
 #         #     draw_own_bbox(np.array(img_pil), pred['xmin'], pred['ymin'], pred['xmax'], pred['ymax'], pred['name'])
 
-#         name_to_id = {
+#         NAME_TO_ID = {
 #             "NA": "NA",
 #             "Bullseye": 10,
 #             "one": 11, "two": 12, "three": 13, "four": 14, "five": 15,
@@ -334,7 +315,7 @@ def stitch_image_own():
 
 #         if isinstance(pred, dict):
 #             draw_own_bbox(np.array(img_pil), pred['xmin'], pred['ymin'], pred['xmax'], pred['ymax'], pred['name'])
-#             image_id = str(name_to_id[pred['name']]) if not isinstance(pred, str) else 'NA'
+#             image_id = str(NAME_TO_ID[pred['name']]) if not isinstance(pred, str) else 'NA'
 #             pred_conf = float(pred["confidence"])
 #         else:
 #             image_id = "NA"
