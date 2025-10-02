@@ -45,6 +45,7 @@ class SerialCmdBaseLL:
     class SensorCmd(Enum):
         IR_LEFT = b'w'
         IR_RIGHT = b'e'
+        MOTOR_MOV = b't'
         USOUND = b'u'
         GZ = b'g'
         QTRN_YAW = b'y'

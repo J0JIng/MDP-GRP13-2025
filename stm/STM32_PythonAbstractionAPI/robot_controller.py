@@ -376,4 +376,15 @@ class RobotController:
         return GPIO.input(self.PIN_OBSTACLE)
 
     def poll_is_moving(self):
-        return GPIO.input(self.PIN_COMMAND)
+        # return GPIO.input(self.PIN_COMMAND)
+        self.drv.construct_cmd()
+        self.drv.add_cmd_byte(False)
+        self.drv.add_module_byte(self.drv.Modules.SENSOR)
+        self.drv.add_sensor_byte(self.drv.SensorCmd.MOTOR_MOV)
+        self.drv.pad_to_end()
+        ret = self.drv.send_cmd()
+        try:
+            ret = int(ret)
+        except ValueError:
+            return None
+        return ret

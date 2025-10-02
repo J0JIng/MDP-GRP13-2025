@@ -40,6 +40,7 @@ class RaspberryPi:
         self.unpause = self.manager.Event()
 
         self.movement_lock = self.manager.Lock()
+        self.retrylock = self.manager.Lock()
 
         self.android_queue = self.manager.Queue()  # Messages to send to Android
         # Messages that need to be processed by RPi
@@ -48,6 +49,9 @@ class RaspberryPi:
         self.command_queue = self.manager.Queue()
         # X,Y,D coordinates of the robot after execution of a command
         self.path_queue = self.manager.Queue()
+        # Ack results from STM32 motor execution
+        self.stm_ack_queue = self.manager.Queue()
+        self.stm_link.set_ack_queue(self.stm_ack_queue)
 
         self.proc_recv_android = None
         self.proc_recv_stm32 = None
@@ -253,10 +257,13 @@ class RaspberryPi:
         """
         while True:
 
-            message: Optional[str] = self.stm_link.recv()
+            try:
+                success = self.stm_ack_queue.get(timeout=0.5)
+                message: Optional[str] = "ACK" if success else "NACK"
+            except queue.Empty:
+                message = self.stm_link.recv()
 
             if message is None:
-                self.logger.warning("No message received from STM32.")
                 continue
 
             if message.startswith("ACK"):
@@ -291,8 +298,22 @@ class RaspberryPi:
                         )
                     )
 
+                except queue.Empty:
+                    self.logger.debug("Path queue empty when processing ACK; skipping coordinate update.")
                 except Exception:
                     self.logger.warning("Tried to release a released lock!")
+            elif message.startswith("NACK"):
+                self.logger.warning("Received NACK from STM32; releasing movement lock to avoid deadlock.")
+                try:
+                    self.movement_lock.release()
+                except Exception:
+                    self.logger.debug("Movement lock already released after NACK.")
+                if hasattr(self, "retrylock"):
+                    try:
+                        self.retrylock.release()
+                    except Exception:
+                        pass
+                self.android_queue.put(AndroidMessage('error', 'Robot reported failure executing a movement command.'))
             else:
                 self.logger.warning(
                     f"Ignored unknown message from STM: {message}")
@@ -310,6 +331,7 @@ class RaspberryPi:
 
             try:
                 self.android_link.send(message)
+                self.logger.debug(f"Sent to Android: {message.jsonify}")
             except OSError:
                 self.android_dropped.set()
                 self.logger.debug("Event set: Android dropped")
@@ -414,7 +436,7 @@ class RaspberryPi:
         The response is then forwarded back to the android
         :param obstacle_id_with_signal: the current obstacle ID followed by underscore followed by signal
         """
-        API_IP = self.config['api']['ip']
+        API_IP = self.config['api']['pc_ip']
         IMAGE_API_PORT = self.config['api']['image_port']
 
         obstacle_id, signal = obstacle_id_with_signal.split("_")
@@ -582,7 +604,7 @@ class RaspberryPi:
         Requests for a series of commands and the path from the Algo API.
         The received commands and path are then queued in the respective queues
         """
-        API_IP = self.config['api']['ip']
+        API_IP = self.config['api']['pc_ip']
         ALGO_API_PORT = self.config['api']['algo_port']
         timeouts = (self.config.get('api', {}) or {}).get('timeouts', {})
         algo_timeout = int(timeouts.get('algo', 3))
@@ -737,7 +759,7 @@ class RaspberryPi:
 
     def request_stitch(self):
         """Sends a stitch request to the image recognition API to stitch the different images together"""
-        API_IP = self.config['api']['ip']
+        API_IP = self.config['api']['pc_ip']
         IMAGE_API_PORT = self.config['api']['image_port']
         timeouts = (self.config.get('api', {}) or {}).get('timeouts', {})
         image_timeout = int(timeouts.get('image', 3))
@@ -798,7 +820,7 @@ class RaspberryPi:
         Returns:
             bool: True if both running, False otherwise.
         """
-        API_IP = self.config['api']['ip']
+        API_IP = self.config['api']['pc_ip']
         IMAGE_API_PORT = self.config['api']['image_port']
         ALGO_API_PORT = self.config['api']['algo_port']
 
@@ -824,3 +846,8 @@ class RaspberryPi:
         algo_ok = probe(f"http://{API_IP}:{ALGO_API_PORT}/status", "Algo")
 
         return image_ok and algo_ok
+
+
+if __name__ == "__main__":
+    rpi = RaspberryPi()
+    rpi.start()
