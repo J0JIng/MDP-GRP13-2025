@@ -138,7 +138,7 @@ class AndroidLink(Link):
         except Exception as e:
             self.logger.error("Failed to disconnect Bluetooth link: %s", e)
 
-    def send(self, message: AndroidMessage, tries: int = 2) -> None:
+    def send(self, message: AndroidMessage, tries: int = 1) -> None:
         """Send a Message to Android over Bluetooth.
 
         Notes:
