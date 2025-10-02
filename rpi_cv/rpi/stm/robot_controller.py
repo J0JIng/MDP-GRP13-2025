@@ -2,6 +2,8 @@ from enum import Enum
 from typing import Optional, Callable
 import asyncio
 import time
+from gpiozero import DistanceSensor
+from time import sleep
 
 from stm.serial_cmd_base_ll import SerialCmdBaseLL
 import RPi.GPIO as GPIO
@@ -34,8 +36,8 @@ class PinState(Enum):
 
 
 class RobotController:
-    PIN_COMMAND: int = 15  # TODO DEFINE
-    PIN_OBSTACLE: int = 14  # TODO DEFINE
+    PIN_US_TRIG: int = 15  # TODO DEFINE
+    PIN_US_ECHO: int = 14  # TODO DEFINE
     MOVE_COMPLETION_TIMEOUT_S: float = 60.0
     MOVE_START_TIMEOUT_S: float = 5.0
     MOVE_STOP_STABLE_WINDOW_S: float = 0.2
@@ -44,25 +46,31 @@ class RobotController:
 
     def __init__(self, port: str, baudrate: int, _inst_obstr_cb: Optional[Callable[..., None]] = None):
         self.drv = SerialCmdBaseLL(port, baudrate)
-        GPIO.setmode(GPIO.BCM)
-        self.cmd_pin_state = PinState.Z
-        self.obstr_pin_state = PinState.Z
+        
+        sensor = DistanceSensor(echo=24, trigger=23, max_distance=4.0)
+        # GPIO.setmode(GPIO.BCM)
+        # self.cmd_pin_state = PinState.Z
+        # self.obstr_pin_state = PinState.Z
 
-        GPIO.setup(self.PIN_COMMAND, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # LED pin set as output
-        GPIO.setup(self.PIN_OBSTACLE, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # PWM pin set as output
-        if GPIO.input(self.PIN_COMMAND) == GPIO.HIGH:
-            print("[CONTROLLER] WARN: COMMAND PIN N/C OR UNEXPECTED STATE")
-        else:
-            self.cmd_pin_state = PinState.LOW
+        # GPIO.setup(self.PIN_COMMAND, GPIO.IN, pull_up_down=GPIO.PUD_UP) 
+        # GPIO.setup(self.PIN_OBSTACLE, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        
+        # if GPIO.input(self.PIN_COMMAND) == GPIO.HIGH:
+        #     print("[CONTROLLER] WARN: COMMAND PIN N/C OR UNEXPECTED STATE")
+        # else:
+        #     self.cmd_pin_state = PinState.LOW
 
-        if GPIO.input(self.PIN_OBSTACLE) == GPIO.HIGH:
-            print("[CONTROLLER] WARN: OBSTACLE PIN N/C OR UNEXPECTED STATE")
-        else:
-            self.obstr_pin_state = PinState.LOW
-        self._inst_obstr_cb = _inst_obstr_cb
-        if self._inst_obstr_cb is not None:
-            GPIO.add_event_detect(self.PIN_OBSTACLE, GPIO.RISING,
-                                  callback=self.sig_obst_callback, bouncetime=50)
+        # if GPIO.input(self.PIN_OBSTACLE) == GPIO.HIGH:
+        #     print("[CONTROLLER] WARN: OBSTACLE PIN N/C OR UNEXPECTED STATE")
+        # else:
+        #     self.obstr_pin_state = PinState.LOW
+        
+        # self._inst_obstr_cb = _inst_obstr_cb
+        # if self._inst_obstr_cb is not None:
+        #     GPIO.add_event_detect(self.PIN_OBSTACLE, 
+        #                           GPIO.RISING,
+        #                           callback=self.sig_obst_callback,
+        #                           bouncetime=50)
 
     def validate_dist(self, dist: int) -> None:
         '''
@@ -453,10 +461,19 @@ class RobotController:
         return ret
 
     def poll_obstruction(self):
-        return GPIO.input(self.PIN_OBSTACLE)
+        try:
+            while True:
+                # sensor.distance is in meters (float 0.0–1.0+)
+                print(f"{sensor.distance * 100:.1f} cm")
+                distance = float(sensor.distance * 100)
+                if distance <= 5.0:
+                    return True
+                sleep(0.1)
+
+        except KeyboardInterrupt:
+            pass
 
     def poll_is_moving(self):
-        # return GPIO.input(self.PIN_COMMAND)
         self.drv.construct_cmd()
         self.drv.add_cmd_byte(False)
         self.drv.add_module_byte(self.drv.Modules.SENSOR)
