@@ -44,13 +44,13 @@ def draw_own_bbox(img, x1, y1, x2, y2, label, color=(36, 255, 12), text_color=(0
     name_to_id = {
         "NA": 'NA',
         "Bullseye": 10,
-        "one": 11, "Two": 12, "Three": 13, "Four": 14, "Five": 15,
-        "Six": 16, "Seven": 17, "Eight": 18, "Nine": 19,
+        "one": 11, "two": 12, "three": 13, "four": 14, "five": 15,
+        "six": 16, "seven": 17, "eight": 18, "nine": 19,
         "A": 20, "B": 21, "C": 22, "D": 23, "E": 24, "F": 25, "G": 26, "H": 27,
         "S": 28, "T": 29, "U": 30, "V": 31, "W": 32, "X": 33, "Y": 34, "Z": 35,
-        "Up": 36, "Down": 37, "Right": 38, "Left": 39,
-        "Up Arrow": 36, "Down Arrow": 37, "Right Arrow": 38, "Left Arrow": 39,
-        "Stop": 40
+        "up": 36, "down": 37, "right": 38, "left": 39,
+        "up Arrow": 36, "down Arrow": 37, "right Arrow": 38, "left Arrow": 39,
+        "circle": 40
     }
 
     label = f"{label}-{name_to_id.get(label, 'NA')}"
