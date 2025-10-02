@@ -34,7 +34,7 @@ def image_predict():
 
     ## Week 8 ##
     signal = constituents[2].strip(".jpg")
-    image_id = predict_image(filename, model, signal)
+    image_id, pred_conf = predict_image(filename, model, signal)
 
     ## Week 9 ##
     # We don't need to pass in the signal anymore
@@ -44,7 +44,7 @@ def image_predict():
     result = {
         "obstacle_id": obstacle_id,
         "image_id": image_id,
-        # "confidence": pred_conf
+        "confidence": pred_conf
     }
     return jsonify(result)
 

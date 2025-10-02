@@ -113,88 +113,6 @@ def _save_v8_visual(result, save_dir="runs"):
     cv2.imwrite(out_path, plotted)
     return out_path
 
-# initial prediction function
-# def predict_image(image, model, signal):
-    """
-    Original Week 8 logic adapted to v8+.
-    Keeps filename-based logic you already had: area sorting + signal L/R/C. 
-    """
-    try:
-        img_path = os.path.join('uploads', image)
-        img_pil = Image.open(img_path)
-        results = model.predict(img_pil, verbose=False)  # list of Results
-        r = results[0]
-        _save_v8_visual(r, save_dir="runs")  # mimic v5 results.save('runs')
-
-        preds = _results_to_dicts_v8(r) # list of objects detected if more than 1 object detected
-        pred = "NA" # initialzed to NA for final prediction
-
-        # Filter out Bullseye by name first
-        preds = [d for d in preds if d["name"] != "Bullseye"]
-
-        # Detected 1 object
-        if len(preds) == 1:
-            pred = preds[0]
-
-        # Detected multiple objects
-        elif len(preds) > 1:
-            pred_shortlist = []
-            current_area = preds[0]["bboxArea"]
-            for d in preds:
-                if d["name"] != "Bullseye" and d["confidence"] > 0.5 and (
-                    d["bboxArea"] >= current_area * 0.8 or
-                    (d["name"] == "one" and d["bboxArea"] >= current_area * 0.6)
-                ):
-                    pred_shortlist.append(d)
-                    current_area = d["bboxArea"]
-
-            if len(pred_shortlist) == 1:
-                pred = pred_shortlist[0]
-            elif len(pred_shortlist) > 1:
-                pred_shortlist.sort(key=lambda d: d["xmin"])  # left-to-right
-                if signal == 'L':
-                    pred = pred_shortlist[0]
-                elif signal == 'R':
-                    pred = pred_shortlist[-1]
-                else:
-                    # choose central (~ your logic) else largest area
-                    chosen = None
-                    for d in pred_shortlist:
-                        if 250 < d["xmin"] < 774:
-                            chosen = d
-                            break
-                    pred = chosen if chosen else sorted(pred_shortlist, key=lambda d: d["bboxArea"])[-1]
-
-        # if not isinstance(pred, str):
-        #     draw_own_bbox(np.array(img_pil), pred['xmin'], pred['ymin'], pred['xmax'], pred['ymax'], pred['name'])
-
-        name_to_id = {
-            "NA": "NA",
-            "Bullseye": 10,
-            "one": 11, "two": 12, "three": 13, "four": 14, "five": 15,
-            "six": 16, "seven": 17, "eight": 18, "nine": 19,
-            "A": 20, "B": 21, "C": 22, "D": 23, "E": 24, "F": 25, "G": 26, "H": 27,
-            "S": 28, "T": 29, "U": 30, "V": 31, "W": 32, "X": 33, "Y": 34, "Z": 35,
-            "up": 36, "down": 37, "right": 38, "left": 39,
-            "up arrow": 36, "down arrow": 37, "right arrow": 38, "left arrow": 39,
-            "circle": 40
-        }
-
-        if isinstance(pred, dict):
-            draw_own_bbox(np.array(img_pil), pred['xmin'], pred['ymin'], pred['xmax'], pred['ymax'], pred['name'])
-            image_id = str(name_to_id[pred['name']]) if not isinstance(pred, str) else 'NA'
-            pred_conf = float(pred["confidence"])
-        else:
-            image_id = "NA"
-            pred_conf = 0.0
-        
-        print(f"Final result: {image_id}")
-        print(f"Predicted confidence: {pred_conf:.4f}")
-        return image_id, pred_conf
-    except Exception as e:
-        print(f"Final result: NA ({e})")
-        return 'NA', 0.0
-
 # accounts for single bulleyes case
 def predict_image(image, model, signal): 
     """
@@ -340,3 +258,91 @@ def stitch_image_own():
     stitchedImg.save(stitchedPath)
 
     return stitchedImg
+
+
+
+
+
+
+
+# # initial prediction function
+# def predict_image(image, model, signal):
+#     """
+#     Original Week 8 logic adapted to v8+.
+#     Keeps filename-based logic you already had: area sorting + signal L/R/C. 
+#     """
+#     try:
+#         img_path = os.path.join('uploads', image)
+#         img_pil = Image.open(img_path)
+#         results = model.predict(img_pil, verbose=False)  # list of Results
+#         r = results[0]
+#         _save_v8_visual(r, save_dir="runs")  # mimic v5 results.save('runs')
+
+#         preds = _results_to_dicts_v8(r) # list of objects detected if more than 1 object detected
+#         pred = "NA" # initialzed to NA for final prediction
+
+#         # Filter out Bullseye by name first
+#         preds = [d for d in preds if d["name"] != "Bullseye"]
+
+#         # Detected 1 object
+#         if len(preds) == 1:
+#             pred = preds[0]
+
+#         # Detected multiple objects
+#         elif len(preds) > 1:
+#             pred_shortlist = []
+#             current_area = preds[0]["bboxArea"]
+#             for d in preds:
+#                 if d["name"] != "Bullseye" and d["confidence"] > 0.5 and (
+#                     d["bboxArea"] >= current_area * 0.8 or
+#                     (d["name"] == "one" and d["bboxArea"] >= current_area * 0.6)
+#                 ):
+#                     pred_shortlist.append(d)
+#                     current_area = d["bboxArea"]
+
+#             if len(pred_shortlist) == 1:
+#                 pred = pred_shortlist[0]
+#             elif len(pred_shortlist) > 1:
+#                 pred_shortlist.sort(key=lambda d: d["xmin"])  # left-to-right
+#                 if signal == 'L':
+#                     pred = pred_shortlist[0]
+#                 elif signal == 'R':
+#                     pred = pred_shortlist[-1]
+#                 else:
+#                     # choose central (~ your logic) else largest area
+#                     chosen = None
+#                     for d in pred_shortlist:
+#                         if 250 < d["xmin"] < 774:
+#                             chosen = d
+#                             break
+#                     pred = chosen if chosen else sorted(pred_shortlist, key=lambda d: d["bboxArea"])[-1]
+
+#         # if not isinstance(pred, str):
+#         #     draw_own_bbox(np.array(img_pil), pred['xmin'], pred['ymin'], pred['xmax'], pred['ymax'], pred['name'])
+
+#         name_to_id = {
+#             "NA": "NA",
+#             "Bullseye": 10,
+#             "one": 11, "two": 12, "three": 13, "four": 14, "five": 15,
+#             "six": 16, "seven": 17, "eight": 18, "nine": 19,
+#             "A": 20, "B": 21, "C": 22, "D": 23, "E": 24, "F": 25, "G": 26, "H": 27,
+#             "S": 28, "T": 29, "U": 30, "V": 31, "W": 32, "X": 33, "Y": 34, "Z": 35,
+#             "up": 36, "down": 37, "right": 38, "left": 39,
+#             "up arrow": 36, "down arrow": 37, "right arrow": 38, "left arrow": 39,
+#             "circle": 40
+#         }
+
+#         if isinstance(pred, dict):
+#             draw_own_bbox(np.array(img_pil), pred['xmin'], pred['ymin'], pred['xmax'], pred['ymax'], pred['name'])
+#             image_id = str(name_to_id[pred['name']]) if not isinstance(pred, str) else 'NA'
+#             pred_conf = float(pred["confidence"])
+#         else:
+#             image_id = "NA"
+#             pred_conf = 0.0
+        
+#         print(f"Final result: {image_id}")
+#         print(f"Predicted confidence: {pred_conf:.4f}")
+#         return image_id, pred_conf
+#     except Exception as e:
+        # print(f"Final result: NA ({e})")
+        # return 'NA', 0.0
