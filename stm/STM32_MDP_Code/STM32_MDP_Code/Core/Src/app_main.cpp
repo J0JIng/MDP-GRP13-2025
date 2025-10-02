@@ -17,10 +17,37 @@ sensorData_t sensor_data;
 isTaskAlive_t is_task_alive_struct = { 0 };
 bool test_run = false;
 
+volatile uint32_t us_rise = 0, us_fall = 0;
+#define US_EVT_DONE  (1U << 0)
+osEventFlagsId_t us_evt;
+
 // Function declaration
 void sensorIRTask(void *pv);
 void sensorUSTask(void *pv);
 void sensorIMUTask(void *pv);
+
+// ---- µs delay using DWT cycle counter (Cortex-M4) ----
+static inline void DWT_Delay_Init(void){
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+}
+static inline void delay_us(uint32_t us){
+    uint32_t start = DWT->CYCCNT;
+    uint32_t cycles = (SystemCoreClock/1000000U) * us;
+    while ((DWT->CYCCNT - start) < cycles) { __NOP(); }
+}
+
+static inline float ticks_to_us_TIM8(uint32_t ticks) {
+  // adjust if you’re using a different timer/prescaler
+  uint32_t tim_clk = HAL_RCC_GetPCLK2Freq();        // TIM8 on APB2
+  if ((RCC->CFGR & RCC_CFGR_PPRE2) && (RCC->CFGR & RCC_CFGR_PPRE2) != RCC_CFGR_PPRE2_DIV1) tim_clk *= 2U;
+  float tick_us = ((float)(htim8.Init.Prescaler + 1U) * 1e6f) / (float)tim_clk;
+  return ticks * tick_us;
+}
+
+// External handles provided by CubeMX-generated main.c
+extern ADC_HandleTypeDef hadc1;   // ADC1 for 2 IR channels (scan mode, Rank1/Rank2)
+extern TIM_HandleTypeDef htim8;   // TIM8 CH2 input capture for US echo
 
 
 osThreadId_t oledTaskHandle;
@@ -100,6 +127,7 @@ void initializeCPPconstructs(void) {
 	sensor_data.ir_dist_th_L = 10.0f;
 	sensor_data.ir_dist_th_R = 10.0f;
 
+	us_evt = osEventFlagsNew(NULL);
 
 	// create instance of the Task
 	// 1. Processor related task
@@ -114,8 +142,8 @@ void initializeCPPconstructs(void) {
 
 	// 4. Sensor related task
 	imuTaskHandle = osThreadNew(sensorIMUTask, NULL, &imuTask_attr);
-	//	irTaskHandle = osThreadNew(sensorIRTask, NULL, &irTask_attr);
-	//	usTaskHandle = osThreadNew(sensorUSTask, NULL, &usTask_attr);
+	irTaskHandle = osThreadNew(sensorIRTask, NULL, &irTask_attr);
+	usTaskHandle = osThreadNew(sensorUSTask, NULL, &usTask_attr);
 
 }
 
@@ -131,7 +159,61 @@ float ir_distR_Avg = 0;       // Average distance for right IR sensor
 void sensorIRTask(void *pv) {
 
 	// init sensorIRTask
+    const int NSAMPLES = 16;
+    const uint32_t poll_timeout = 2;  // ms per conversion
 
+    for (;;) {
+        uint32_t acc1 = 0, acc2 = 0;
+
+        for (int i = 0; i < NSAMPLES; ++i) {
+            HAL_ADC_Start(&hadc1);
+
+            // Rank 1 -> IR Left (ADC channel configured as Rank 1 in CubeMX)
+            HAL_ADC_PollForConversion(&hadc1, poll_timeout);
+            uint16_t raw1 = HAL_ADC_GetValue(&hadc1);
+            acc1 += raw1;
+
+            // Rank 2 -> IR Right (ADC channel configured as Rank 2 in CubeMX)
+            HAL_ADC_PollForConversion(&hadc1, poll_timeout);
+            uint16_t raw2 = HAL_ADC_GetValue(&hadc1);
+            acc2 += raw2;
+
+            HAL_ADC_Stop(&hadc1);
+        }
+
+        uint16_t raw1 = acc1 / NSAMPLES;
+        uint16_t raw2 = acc2 / NSAMPLES;
+
+        // ADC -> volts (12-bit, 3.3 V ref)
+        float v1 = (raw1 * 3.3f) / 4095.0f;
+        float v2 = (raw2 * 3.3f) / 4095.0f;
+
+        // Simple inverse-voltage distance fit (same as your previous main.c)
+        float d1 = (v1 > 0.1f) ? (13.0f / v1 - 0.42f) : -1.0f;
+        float d2 = (v2 > 0.1f) ? (13.0f / v2 - 0.42f) : -1.0f;
+
+        // Clamp to a reasonable range (10–80 cm) to avoid spikes
+        if (d1 > 80.0f) d1 = 80.0f; if (d1 > 0 && d1 < 10.0f) d1 = 10.0f;
+        if (d2 > 80.0f) d2 = 80.0f; if (d2 > 0 && d2 < 10.0f) d2 = 10.0f;
+
+        // Optional moving average using your ring buffer
+        irBufferL[bufferIndex] = d1;
+        irBufferR[bufferIndex] = d2;
+        bufferIndex = (bufferIndex + 1) % BUFFER_SIZE;
+
+        float sumL = 0, sumR = 0;
+        for (int i = 0; i < BUFFER_SIZE; ++i) { sumL += irBufferL[i]; sumR += irBufferR[i]; }
+        ir_distL_Avg = sumL / BUFFER_SIZE;
+        ir_distR_Avg = sumR / BUFFER_SIZE;
+
+        // Publish to shared sensor struct
+        sensor_data.ir_distL = ir_distL_Avg;   // left IR in cm
+        sensor_data.ir_distR = ir_distR_Avg;   // right IR in cm
+
+        is_task_alive_struct.senr = true;
+        osDelay(100);     // ~10 Hz
+        osThreadYield();
+    }
 	//	for(;;){
 	// add logic ...
 	//	sensor_data.ir_distL = 10.0;
@@ -143,7 +225,39 @@ void sensorIRTask(void *pv) {
 void sensorUSTask(void *pv) {
 
 	// init sensorUSTask
+    DWT_Delay_Init();  // precise µs timing for 10 µs TRIG pulse
 
+    for (;;) {
+      // Arm timer for rising edge + start capture IRQ
+      __HAL_TIM_SET_COUNTER(&htim8, 0);
+      __HAL_TIM_SET_CAPTUREPOLARITY(&htim8, TIM_CHANNEL_2, TIM_INPUTCHANNELPOLARITY_RISING);
+      HAL_TIM_IC_Start_IT(&htim8, TIM_CHANNEL_2);
+
+      // 10–12 µs trigger pulse
+      HAL_GPIO_WritePin(asy_US_TRIG_GPIO_Port, asy_US_TRIG_Pin, GPIO_PIN_SET);
+      delay_us(12);
+      HAL_GPIO_WritePin(asy_US_TRIG_GPIO_Port, asy_US_TRIG_Pin, GPIO_PIN_RESET);
+
+      // Wait for ISR to flag completion (timeout ~30 ms)
+      uint32_t flags = osEventFlagsWait(us_evt, US_EVT_DONE, osFlagsWaitAny, 30);
+      if ((int32_t)flags >= 0) {
+        // snapshot and compute
+        uint32_t rise = us_rise, fall = us_fall;
+        uint32_t period = htim8.Init.Period + 1U;
+        uint32_t ticks  = (fall >= rise) ? (fall - rise) : (period - rise + fall);
+
+        float pulse_us = ticks_to_us_TIM8(ticks);
+        float cm = (pulse_us * 0.0343f) * 0.5f;   // speed of sound, round-trip
+
+        // publish (writer)
+        sensor_data.usonic_dist = cm;             // <-- now the display can show it
+      } else {
+        // timeout
+        sensor_data.usonic_dist = -1.0f;
+      }
+
+      osDelay(60);  // ~16 Hz
+    }
 	//	for(;;){
 	// add logic ...
 	//
@@ -316,32 +430,49 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	}
 }
 
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
-	static int t1, t2, first=0,echo=0;
-	char buffer[15];
+//void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
+//	static int t1, t2, first=0,echo=0;
+//	char buffer[15];
+//
+//	if(htim==&htim8){
+//		if (first == 0){
+//			t1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
+//			first=1;
+//			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_2, TIM_INPUTCHANNELPOLARITY_FALLING);
+//		} else if (first == 1){
+//			t2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
+//			__HAL_TIM_SET_COUNTER(htim, 0);
+//
+//			if(t2 >= t1){
+//				echo = t2 - t1;
+//			} else{
+//				echo = (0xffff - t1) + t2;
+//			}
+//			sensor_data.usonic_dist = echo * 0.0343f / 2;
+//			first=0;
+//			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_2, TIM_INPUTCHANNELPOLARITY_RISING);
+//			HAL_TIM_IC_Stop_IT(&htim8, TIM_CHANNEL_2);
+//		}
+//	}
+//}
 
-	if(htim==&htim8){
-		if (first == 0){
-			t1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
-			first=1;
-			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_2, TIM_INPUTCHANNELPOLARITY_FALLING);
-		} else if (first == 1){
-			t2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
-			__HAL_TIM_SET_COUNTER(htim, 0);
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
+  if (htim->Instance == TIM8 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2) {
+    uint32_t c = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
+    static uint8_t stage = 0;          // 0=wait rising, 1=wait falling
 
-			if(t2 >= t1){
-				echo = t2 - t1;
-			} else{
-				echo = (0xffff - t1) + t2;
-			}
-			sensor_data.usonic_dist = echo * 0.0343f / 2;
-			first=0;
-			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_2, TIM_INPUTCHANNELPOLARITY_RISING);
-			HAL_TIM_IC_Stop_IT(&htim8, TIM_CHANNEL_2);
-		}
-	}
+    if (stage == 0) {                   // rising
+      us_rise = c;
+      stage = 1;
+      __HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_2, TIM_INPUTCHANNELPOLARITY_FALLING);
+    } else {                            // falling
+      us_fall = c;
+      stage = 0;
+      __HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_2, TIM_INPUTCHANNELPOLARITY_RISING);
+      osEventFlagsSet(us_evt, US_EVT_DONE);  // notify task
+    }
+  }
 }
-
 
 
 

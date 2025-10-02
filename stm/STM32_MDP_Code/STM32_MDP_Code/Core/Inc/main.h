@@ -63,8 +63,6 @@ extern DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE END EM */
 
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
@@ -93,6 +91,10 @@ void Error_Handler(void);
 #define OLED_SCL_GPIO_Port GPIOD
 #define SN_US_ECHO_Pin GPIO_PIN_7
 #define SN_US_ECHO_GPIO_Port GPIOC
+#define asy_US_ECHO_Pin GPIO_PIN_8
+#define asy_US_ECHO_GPIO_Port GPIOC
+#define asy_US_TRIG_Pin GPIO_PIN_2
+#define asy_US_TRIG_GPIO_Port GPIOD
 #define PWM_A_IN2_Pin GPIO_PIN_8
 #define PWM_A_IN2_GPIO_Port GPIOB
 #define PWM_A_IN1_Pin GPIO_PIN_9

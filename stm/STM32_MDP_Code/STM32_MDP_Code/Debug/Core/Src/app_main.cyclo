@@ -1,13 +1,16 @@
 ../Core/Inc/app_motion.h:108:4:AppMotion::MotionController::~MotionController()	1
-../Core/Src/app_main.cpp:97:6:void initializeCPPconstructs()	1
-../Core/Src/app_main.cpp:131:6:void sensorIRTask(void*)	1
-../Core/Src/app_main.cpp:143:6:void sensorUSTask(void*)	1
-../Core/Src/app_main.cpp:161:6:void sensorIMUTask(void*)	3
-../Core/Src/app_main.cpp:236:6:void quaternionUpdate(float, float, float, float, float, float, float)	1
-../Core/Src/app_main.cpp:309:6:void _ext_sig_halt()	1
-../Core/Src/app_main.cpp:313:6:void HAL_UART_RxCpltCallback(UART_HandleTypeDef*)	2
-../Core/Src/app_main.cpp:319:6:void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef*)	5
-../Core/Src/app_main.cpp:343:1:void __static_initialization_and_destruction_0()	1
-../Core/Src/app_main.cpp:343:1:void __static_initialization_and_destruction_1()	1
-../Core/Src/app_main.cpp:343:1:cpp)	1
-../Core/Src/app_main.cpp:343:1:cpp)	1
+../Core/Src/app_main.cpp:30:20:void DWT_Delay_Init()	1
+../Core/Src/app_main.cpp:34:20:void delay_us(uint32_t)	2
+../Core/Src/app_main.cpp:40:21:float ticks_to_us_TIM8(uint32_t)	4
+../Core/Src/app_main.cpp:124:6:void initializeCPPconstructs()	1
+../Core/Src/app_main.cpp:159:6:void sensorIRTask(void*)	11
+../Core/Src/app_main.cpp:225:6:void sensorUSTask(void*)	3
+../Core/Src/app_main.cpp:275:6:void sensorIMUTask(void*)	3
+../Core/Src/app_main.cpp:350:6:void quaternionUpdate(float, float, float, float, float, float, float)	1
+../Core/Src/app_main.cpp:423:6:void _ext_sig_halt()	1
+../Core/Src/app_main.cpp:427:6:void HAL_UART_RxCpltCallback(UART_HandleTypeDef*)	2
+../Core/Src/app_main.cpp:459:6:void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef*)	4
+../Core/Src/app_main.cpp:475:1:void __static_initialization_and_destruction_0()	1
+../Core/Src/app_main.cpp:475:1:void __static_initialization_and_destruction_1()	1
+../Core/Src/app_main.cpp:475:1:cpp)	1
+../Core/Src/app_main.cpp:475:1:cpp)	1

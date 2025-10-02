@@ -1,13 +1,16 @@
 ../Core/Inc/app_motion.h:108:4:AppMotion::MotionController::~MotionController()	16	static
-../Core/Src/app_main.cpp:97:6:void initializeCPPconstructs()	8	static
-../Core/Src/app_main.cpp:131:6:void sensorIRTask(void*)	16	static
-../Core/Src/app_main.cpp:143:6:void sensorUSTask(void*)	16	static
-../Core/Src/app_main.cpp:161:6:void sensorIMUTask(void*)	168	static
-../Core/Src/app_main.cpp:236:6:void quaternionUpdate(float, float, float, float, float, float, float)	152	static
-../Core/Src/app_main.cpp:309:6:void _ext_sig_halt()	8	static
-../Core/Src/app_main.cpp:313:6:void HAL_UART_RxCpltCallback(UART_HandleTypeDef*)	16	static
-../Core/Src/app_main.cpp:319:6:void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef*)	32	static
-../Core/Src/app_main.cpp:343:1:void __static_initialization_and_destruction_0()	8	static
-../Core/Src/app_main.cpp:343:1:void __static_initialization_and_destruction_1()	8	static
-../Core/Src/app_main.cpp:343:1:cpp)	8	static
-../Core/Src/app_main.cpp:343:1:cpp)	8	static
+../Core/Src/app_main.cpp:30:20:void DWT_Delay_Init()	4	static
+../Core/Src/app_main.cpp:34:20:void delay_us(uint32_t)	24	static,ignoring_inline_asm
+../Core/Src/app_main.cpp:40:21:float ticks_to_us_TIM8(uint32_t)	24	static
+../Core/Src/app_main.cpp:124:6:void initializeCPPconstructs()	8	static
+../Core/Src/app_main.cpp:159:6:void sensorIRTask(void*)	72	static
+../Core/Src/app_main.cpp:225:6:void sensorUSTask(void*)	48	static
+../Core/Src/app_main.cpp:275:6:void sensorIMUTask(void*)	168	static
+../Core/Src/app_main.cpp:350:6:void quaternionUpdate(float, float, float, float, float, float, float)	152	static
+../Core/Src/app_main.cpp:423:6:void _ext_sig_halt()	8	static
+../Core/Src/app_main.cpp:427:6:void HAL_UART_RxCpltCallback(UART_HandleTypeDef*)	16	static
+../Core/Src/app_main.cpp:459:6:void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef*)	24	static
+../Core/Src/app_main.cpp:475:1:void __static_initialization_and_destruction_0()	8	static
+../Core/Src/app_main.cpp:475:1:void __static_initialization_and_destruction_1()	8	static
+../Core/Src/app_main.cpp:475:1:cpp)	8	static
+../Core/Src/app_main.cpp:475:1:cpp)	8	static
