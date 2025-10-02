@@ -137,7 +137,7 @@ class AndroidLink(Link):
         except Exception as e:
             self.logger.error("Failed to disconnect Bluetooth link: %s", e)
 
-    def send(self, message: AndroidMessage) -> None:
+    def send(self, message: AndroidMessage, tries: int = 2) -> None:
         """Send a Message to Android over Bluetooth.
 
         Notes:
@@ -145,18 +145,24 @@ class AndroidLink(Link):
         - Use sendall() semantics to reduce partial writes.
         - Optional short delay between messages can reduce coalescing on the
           Android read() side; configurable via bluetooth.send_throttle_ms.
+        - The `tries` parameter controls how many times the payload is sent;
+          the default (2) results in the message being transmitted twice.
         """
         newline = self.config["bluetooth"].get("newline_delimited", True)
         throttle_ms = int(self.config["bluetooth"].get("send_throttle_ms", 0))
 
-        if self.client_sock:
-            try:
-                payload_str = message.jsonify
-                if newline:
-                    payload_str += "\n"
-                data = payload_str.encode("utf-8")
+        if not self.client_sock:
+            self.logger.warning("Bluetooth client socket not available")
+            return
 
-                # Ensure full payload is transmitted
+        max_attempts = max(int(tries), 1)
+        payload_str = message.jsonify
+        if newline:
+            payload_str += "\n"
+        data = payload_str.encode("utf-8")
+
+        for attempt in range(1, max_attempts + 1):
+            try:
                 total_sent = 0
                 while total_sent < len(data):
                     sent = self.client_sock.send(data[total_sent:])
@@ -167,21 +173,31 @@ class AndroidLink(Link):
                         raise OSError("Bluetooth socket connection broken during send")
                     total_sent += sent
 
-                self.logger.debug("Sent to Android: %s", message.jsonify)
+                self.logger.debug(
+                    "Sent to Android (attempt %d/%d): %s", attempt, max_attempts, message.jsonify
+                )
 
-                # Optional small delay to help Android reader emit per-line messages
                 if throttle_ms > 0:
                     import time
                     time.sleep(throttle_ms / 1000.0)
 
             except OSError as e:
-                self.logger.error("Error sending message to Android: %s", e)
-                raise e
+                if attempt == max_attempts:
+                    self.logger.error("Error sending message to Android: %s", e)
+                    raise e
+                self.logger.warning(
+                    "Bluetooth send failed on attempt %d/%d: %s", attempt, max_attempts, e
+                )
             except Exception as e:
-                self.logger.error("Unexpected error sending message to Android: %s", e)
-                raise e
-        else:
-            self.logger.warning("Bluetooth client socket not available")
+                if attempt == max_attempts:
+                    self.logger.error("Unexpected error sending message to Android: %s", e)
+                    raise e
+                self.logger.warning(
+                    "Unexpected error during Bluetooth send on attempt %d/%d: %s",
+                    attempt,
+                    max_attempts,
+                    e,
+                )
 
     def recv(self) -> Optional[str]:
         """Receive one complete JSON message from Android.
