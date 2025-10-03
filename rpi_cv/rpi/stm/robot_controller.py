@@ -508,7 +508,7 @@ class RobotController:
                 # sensor.distance is in meters (float 0.0–1.0+)
                 distance_cm = float(sensor.distance * 100)
                 print(f"{distance_cm:.1f} cm")
-                if distance_cm <= 5.0:
+                if distance_cm <= 50.0:
                     return True
                 sleep(0.1)
 

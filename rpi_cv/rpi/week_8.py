@@ -3,6 +3,7 @@ from multiprocessing import Manager, Process
 import os
 import queue
 import time
+from pathlib import Path
 from config.consts import SYMBOL_MAP
 from config.load_config import load_rpi_config
 from helper.logger import prepare_logger
@@ -449,6 +450,12 @@ class RaspberryPi:
             "info", f"Capturing image for obstacle id: {obstacle_id}"))
         url = f"http://{API_IP}:{IMAGE_API_PORT}/image"
         filename = f"{int(time.time())}_{obstacle_id}_{signal}.jpg"
+        images_dir = Path(__file__).resolve().parent / "images"
+        try:
+            images_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            self.logger.warning("Unable to create images directory %s: %s", images_dir, e)
+        filepath = images_dir / filename
 
         retry_count = 0
         current_shutter_us = 20000
@@ -475,7 +482,7 @@ class RaspberryPi:
                 "-br", "50",
                 "-co", "10",
                 "-sa", "10",
-                "-o", filename,
+                "-o", str(filepath),
             ]
             rpistr = " ".join(rpi_str_parts)
 
@@ -486,7 +493,7 @@ class RaspberryPi:
 
             self.logger.debug("Requesting from image API")
 
-            with open(filename, 'rb') as image_file:
+            with open(filepath, 'rb') as image_file:
                 response = requests.post(
                     url, files={"file": (filename, image_file)})
 
