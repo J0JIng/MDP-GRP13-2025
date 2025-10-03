@@ -201,6 +201,43 @@ class RobotController:
             return False
         return self._wait_for_motion_complete()
 
+    def crawl_forward_until_obstacle(self, retry: bool = True) -> bool:
+        '''
+        Command robot to crawl FORWARD until an obstacle is detected.
+        returns True if command was acknowledged and obstacle detected, False otherwise.
+        '''
+
+        attempts = 3 if retry else 1
+
+        for _ in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.MOTOR)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.FWD_CHAR)
+            self.drv.add_args_bytes(999)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.CRAWL_CHAR)
+            self.drv.pad_to_end()
+
+            ack = self.drv.ll_is_valid(self.drv.send_cmd())
+            if not ack:
+                continue
+
+            time.sleep(self.MOVE_INITIAL_DELAY_S)
+
+            try:
+                detection = self.poll_obstruction()
+            except Exception:
+                detection = None
+
+            halted = self.halt(retry=False)
+            if not halted:
+                return False
+
+            if detection:
+                return True
+
+        return False
+
     def crawl_backward(self, dist: int) -> bool:
         '''
         Command robot to move BACKWARD by [dist] cm. IN A SLOW MANNER. 
