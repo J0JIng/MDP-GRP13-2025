@@ -199,6 +199,11 @@ class STMLink(Link):
                     success = bool(robot and robot.crawl_backward(dist))
                     performed_action = robot is not None
 
+            elif token == "OB01":
+                robot = _ensure_robot()
+                success = bool(robot and robot.crawl_forward_until_obstacle())
+                performed_action = robot is not None
+
             # Manual steering: TLxx / TRxx (xx degrees, '--' treated as standard 90°)
             elif token.startswith("TL"):
                 angle = _parse_angle(token[2:])
