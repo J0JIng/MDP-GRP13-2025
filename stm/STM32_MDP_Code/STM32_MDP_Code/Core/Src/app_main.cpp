@@ -114,7 +114,7 @@ void initializeCPPconstructs(void) {
 
 	// 4. Sensor related task
 	imuTaskHandle = osThreadNew(sensorIMUTask, NULL, &imuTask_attr);
-	//	irTaskHandle = osThreadNew(sensorIRTask, NULL, &irTask_attr);
+	irTaskHandle = osThreadNew(sensorIRTask, NULL, &irTask_attr);
 	//	usTaskHandle = osThreadNew(sensorUSTask, NULL, &usTask_attr);
 
 }
@@ -128,16 +128,67 @@ float ir_distL_Avg = 0;       // Average distance for left IR sensor
 float ir_distR_Avg = 0;       // Average distance for right IR sensor
 
 
+
 void sensorIRTask(void *pv) {
 
 	// init sensorIRTask
+    const int NSAMPLES = 16;
+    const uint32_t poll_timeout = 2;  // ms per conversion
 
-	//	for(;;){
-	// add logic ...
-	//	sensor_data.ir_distL = 10.0;
-	//	sensor_data.ir_distR = 10.0;
-	// sensor_data.usonic_dist = 10.0;
-	//}
+    for (;;) {
+        uint32_t acc1 = 0, acc2 = 0;
+
+        for (int i = 0; i < NSAMPLES; ++i) {
+            HAL_ADC_Start(&hadc1);
+            HAL_ADC_Start(&hadc2);
+
+            // Rank 1 -> IR Left (ADC channel configured as Rank 1 in CubeMX)
+            HAL_ADC_PollForConversion(&hadc1, poll_timeout);
+            uint16_t raw1 = HAL_ADC_GetValue(&hadc1);
+            acc1 += raw1;
+
+            // Rank 2 -> IR Right (ADC channel configured as Rank 2 in CubeMX)
+            HAL_ADC_PollForConversion(&hadc2, poll_timeout);
+            uint16_t raw2 = HAL_ADC_GetValue(&hadc2);
+            acc2 += raw2;
+
+            HAL_ADC_Stop(&hadc1);
+            HAL_ADC_Stop(&hadc2);
+        }
+
+        uint16_t raw1 = acc1 / NSAMPLES;
+        uint16_t raw2 = acc2 / NSAMPLES;
+
+        // ADC -> volts (12-bit, 3.3 V ref)
+        float v1 = (raw1 * 3.3f) / 4095.0f;
+        float v2 = (raw2 * 3.3f) / 4095.0f;
+
+        // Simple inverse-voltage distance fit (same as your previous main.c)
+        float d1 = (v1 > 0.1f) ? (13.0f / v1 - 0.42f) : -1.0f;
+        float d2 = (v2 > 0.1f) ? (13.0f / v2 - 0.42f) : -1.0f;
+
+        // Clamp to a reasonable range (10–80 cm) to avoid spikes
+        if (d1 > 80.0f) d1 = 80.0f; if (d1 > 0 && d1 < 10.0f) d1 = 10.0f;
+        if (d2 > 80.0f) d2 = 80.0f; if (d2 > 0 && d2 < 10.0f) d2 = 10.0f;
+
+        // Optional moving average using your ring buffer
+        irBufferL[bufferIndex] = d1;
+        irBufferR[bufferIndex] = d2;
+        bufferIndex = (bufferIndex + 1) % BUFFER_SIZE;
+
+        float sumL = 0, sumR = 0;
+        for (int i = 0; i < BUFFER_SIZE; ++i) { sumL += irBufferL[i]; sumR += irBufferR[i]; }
+        ir_distL_Avg = sumL / BUFFER_SIZE;
+        ir_distR_Avg = sumR / BUFFER_SIZE;
+
+        // Publish to shared sensor struct
+        sensor_data.ir_distL = ir_distL_Avg;   // left IR in cm
+        sensor_data.ir_distR = ir_distR_Avg;   // right IR in cm
+
+        is_task_alive_struct.senr = true;
+        osDelay(100);     // ~10 Hz
+        osThreadYield();
+    }
 }
 
 void sensorUSTask(void *pv) {

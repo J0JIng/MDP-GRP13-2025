@@ -108,7 +108,6 @@ namespace AppParser {
 	static constexpr BUF_CMP_t CMD_CHAR = 'c';
 	static constexpr BUF_CMP_t REQ_CHAR = 'q';
 
-
 	// index 2
 	static constexpr BUF_CMP_t MOTOR_CHAR = 'm';
 	static constexpr BUF_CMP_t SENSOR_CHAR = 's';
@@ -130,6 +129,7 @@ namespace AppParser {
 	static constexpr BUF_CMP_t GY_Z_CHAR = 'g'; // others are probably useless..
 	static constexpr BUF_CMP_t QTRN_YAW_CHAR = 'y';
 	static constexpr BUF_CMP_t QTRN_ALL_CHAR = 'k';
+	static constexpr BUF_CMP_t MOTOR_MOV = 't';
 
 	static constexpr BUF_CMP_t LAST_HALT_CHAR = 'o';
 	static constexpr BUF_CMP_t T2_180R_CHAR = '!';
