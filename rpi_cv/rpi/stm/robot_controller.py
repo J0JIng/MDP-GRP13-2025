@@ -535,7 +535,7 @@ class RobotController:
             return None
         return ret
 
-    def poll_obstruction(self):
+    def poll_obstruction(self, dist_from_obstacle: float = 55.0):
         sensor = getattr(self, "distance_sensor", None)
         if sensor is None:
             return None
@@ -545,7 +545,7 @@ class RobotController:
                 # sensor.distance is in meters (float 0.0–1.0+)
                 distance_cm = float(sensor.distance * 100)
                 print(f"{distance_cm:.1f} cm")
-                if distance_cm <= 50.0:
+                if distance_cm <= dist_from_obstacle:
                     return True
                 sleep(0.1)
 
