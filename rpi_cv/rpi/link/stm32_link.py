@@ -171,12 +171,14 @@ class STMLink(Link):
             elif token.startswith("FW") and token[2:].isdigit():
                 dist = int(token[2:])
                 robot = _ensure_robot()
-                success = bool(robot and robot.move_forward(dist))
+                # success = bool(robot and robot.move_forward(dist))
+                success = bool(robot and robot.crawl_forward(dist))
                 performed_action = robot is not None
             elif token.startswith("BW") and token[2:].isdigit():
                 dist = int(token[2:])
                 robot = _ensure_robot()
-                success = bool(robot and robot.move_backward(dist))
+                # success = bool(robot and robot.move_backward(dist))
+                success = bool(robot and robot.crawl_backward(dist))
                 performed_action = robot is not None
 
             # Crawl/slow movement: FSnn / BSnn
