@@ -359,7 +359,7 @@ class RaspberryPi:
 
             # STM32 Commands - Send straight to STM32
             stm32_prefixes = ("FS", "BS", "FW", "BW", "FL", "FR", "BL",
-                              "BR", "TL", "TR", "A", "C", "DT", "STOP", "ZZ", "RS")
+                              "BR", "TL", "TR", "A", "C", "DT", "STOP", "ZZ", "RS", "OB")
             if command.startswith(stm32_prefixes):
                 if command.startswith("RS"):
                     self.expecting_rs_ack.value = True
