@@ -157,10 +157,8 @@ void Processor::processorTask(void *pv) {
 				else if (isEq(AUX_CHAR, msg.buffer[2])) {
 					if (isEq(LAST_HALT_CHAR, msg.buffer[3])) {
 						uint8_t tx_buf[25] = { 0 };
-						snprintf((char*) &tx_buf, sizeof(tx_buf), "%ld",
-										sensor_data.last_halt_val);
-								HAL_UART_Transmit(&huart3, (BUF_CMP_t*) tx_buf, strlen((char*) tx_buf),
-										10);
+						snprintf((char*) &tx_buf, sizeof(tx_buf), "%ld", sensor_data.last_halt_val);
+						HAL_UART_Transmit(&huart3, (BUF_CMP_t*) tx_buf, strlen((char*) tx_buf), 10);
 					}
 				}
 
@@ -175,16 +173,16 @@ void Processor::processorTask(void *pv) {
 						HAL_UART_Transmit(&huart3, (BUF_CMP_t*) ack, sizeof(ack), 10);
 						break;
 					}
-					MOTION_PKT_t *pkt = getMotionCmdFromBytes(
-							(uint8_t*) &msg.buffer);
+
+					// convert to internal pkt
+					MOTION_PKT_t *pkt = getMotionCmdFromBytes((uint8_t*) &msg.buffer);
 					if (pkt == NULL) {
 						HAL_UART_Transmit(&huart3, (BUF_CMP_t*) nack, sizeof(nack), 10);
 						break;
 					}
 
 					osMessageQueuePut(tx_ctx->mailbox.queue, pkt, 0, 0);
-					HAL_UART_Transmit(&huart3, (BUF_CMP_t*) ack, sizeof(ack),
-							10);
+					HAL_UART_Transmit(&huart3, (BUF_CMP_t*) ack, sizeof(ack),10);
 					break;
 				}
 				case SENSOR_CHAR: {
@@ -264,50 +262,47 @@ void Processor::returnSensorRequestCmd(BUF_CMP_t id) {
 	uint8_t tx_buf[25] = { 0 };
 
 	switch (id) {
-	case IR_L_CHAR: {
-		snprintf((char*) &tx_buf, sizeof(tx_buf), "%4.2f",
-				sensor_data.ir_distL);
-		HAL_UART_Transmit(&huart3, (BUF_CMP_t*) tx_buf, strlen((char*) tx_buf),
-				10);
-		break;
-	}
-	case IR_R_CHAR: {
-		snprintf((char*) &tx_buf, sizeof(tx_buf), "%4.2f",
-				sensor_data.ir_distR);
-		HAL_UART_Transmit(&huart3, (BUF_CMP_t*) tx_buf, strlen((char*) tx_buf),
-				10);
-		break;
-	}
-	case USOUND_CHAR: {
-		snprintf((char*) &tx_buf, sizeof(tx_buf), "%4.2f",
-				sensor_data.usonic_dist);
-		HAL_UART_Transmit(&huart3, (BUF_CMP_t*) tx_buf, strlen((char*) tx_buf),
-				10);
-		break;
-	}
-	case GY_Z_CHAR: {
-		snprintf((char*) &tx_buf, sizeof(tx_buf), "%4.2f",
-				sensor_data.imu->gyro[2]);
-		HAL_UART_Transmit(&huart3, (BUF_CMP_t*) tx_buf, strlen((char*) tx_buf),
-				10);
-		break;
-	}
-	case QTRN_YAW_CHAR: {
-		snprintf((char*) &tx_buf, sizeof(tx_buf), "%4.2f", sensor_data.yaw_abs);
-		HAL_UART_Transmit(&huart3, (BUF_CMP_t*) tx_buf, strlen((char*) tx_buf), 10);
-		break;
-	}
-	case QTRN_ALL_CHAR: {
-		snprintf((char*) &tx_buf, sizeof(tx_buf), "%4.1f;%4.1f;%4.1f;%4.1f",
-				sensor_data.imu->q[0], sensor_data.imu->q[1],
-				sensor_data.imu->q[2], sensor_data.imu->q[3]);
-		HAL_UART_Transmit(&huart3, (BUF_CMP_t*) tx_buf, strlen((char*) tx_buf),
-				10);
-		break;
-	}
-	default: {
-		HAL_UART_Transmit(&huart3, (BUF_CMP_t*) nack, sizeof(nack), 10);
-	}
+		case IR_L_CHAR: {
+			snprintf((char*) &tx_buf, sizeof(tx_buf), "%4.2f",
+					sensor_data.ir_distL);
+			HAL_UART_Transmit(&huart3, (BUF_CMP_t*) tx_buf, strlen((char*) tx_buf),
+					10);
+			break;
+		}
+		case IR_R_CHAR: {
+			snprintf((char*) &tx_buf, sizeof(tx_buf), "%4.2f",
+					sensor_data.ir_distR);
+			HAL_UART_Transmit(&huart3, (BUF_CMP_t*) tx_buf, strlen((char*) tx_buf),
+					10);
+			break;
+		}
+		case USOUND_CHAR: {
+			snprintf((char*) &tx_buf, sizeof(tx_buf), "%4.2f",
+					sensor_data.usonic_dist);
+			HAL_UART_Transmit(&huart3, (BUF_CMP_t*) tx_buf, strlen((char*) tx_buf),
+					10);
+			break;
+		}
+		case GY_Z_CHAR: {
+			snprintf((char*) &tx_buf, sizeof(tx_buf), "%4.2f",
+					sensor_data.imu->gyro[2]);
+			HAL_UART_Transmit(&huart3, (BUF_CMP_t*) tx_buf, strlen((char*) tx_buf),
+					10);
+			break;
+		}
+		case QTRN_YAW_CHAR: {
+			snprintf((char*) &tx_buf, sizeof(tx_buf), "%4.2f", sensor_data.yaw_abs);
+			HAL_UART_Transmit(&huart3, (BUF_CMP_t*) tx_buf, strlen((char*) tx_buf), 10);
+			break;
+		}
+		case MOTOR_MOV: {
+			snprintf((char*) &tx_buf, sizeof(tx_buf), "%d", (int)sensor_data.is_moving);
+			HAL_UART_Transmit(&huart3, (BUF_CMP_t*) tx_buf, strlen((char*) tx_buf),10);
+			break;
+		}
+		default: {
+			HAL_UART_Transmit(&huart3, (BUF_CMP_t*) nack, sizeof(nack), 10);
+		}
 	}
 }
 

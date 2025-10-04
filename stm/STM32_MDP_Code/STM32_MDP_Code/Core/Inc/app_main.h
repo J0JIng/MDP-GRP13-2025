@@ -54,6 +54,7 @@ typedef struct {
     float     cur_left;
     float     cur_right;
     float     target;
+    bool 	  is_moving;
 } sensorData_t;
 
 // =====================

@@ -48,14 +48,14 @@ namespace AppMotion {
 			&htim4,
 			TIM_CHANNEL_3,
 			TIM_CHANNEL_4,
-			7000
+			4500
 		);
 
 		this->rmotor = new Motor(
 			&htim9,
 			TIM_CHANNEL_1,
 			TIM_CHANNEL_2,
-			7000
+			4500
 		);
 
 		// Edit the following to control the DC motor's PID.
@@ -74,9 +74,9 @@ namespace AppMotion {
 		};
 
 		float pid_param_sync[3] = {
-		    11,
-			4,
-			1
+			0,
+			0,
+			0
 		};
 
 		PID_init(&this->left_pid, PID_POSITION, pid_param_left, 7000, 7000);
@@ -128,52 +128,20 @@ namespace AppMotion {
 			// Move straight 100 m
 //			self->move(true, 100, 35, false, false);
 
-			// Move backwards 100 m
+//			osDelay(1000);
+
+			// Move straight 100 m
 //			self->move(false, 100, 35, false, false);
 
-			// Move Straight Turn right
+			// Turn right
 //			self->move(true, 10, 35, false, false);
 //			self->turn(true, true, false, 90);
 //			self->move(true, 10, 35, false, false);
-//
-//			// Move Straight Turn left
+
+			// Turn left
 //			self->move(true, 10, 35, false, false);
 //			self->turn(false, true, false, 90);
 //			self->move(true, 10, 35, false, false);
-
-			// Move Backward Turn left
-//			self->move(false, 10, 35, false, false);
-//			self->turn(true, false, false, 90);
-//			self->move(false, 10, 35, false, false);
-
-			// Move Backward Turn left
-//			self->move(false, 10, 35, false, false);
-//			self->turn(false, false, false, 90);
-//			self->move(false, 10, 35, false, false);
-
-
-			// A5
-//			self->turn(false, true, false, 90);
-//		    self->move(true, 35, 35, false, false);
-//		    self->turn(true, true, false, 90);
-//		    self->turn(true, true, false, 90);
-//
-//
-//		    osDelay(500);
-//		    self->turn(false, true, false, 90);
-//			self->move(true, 35, 35, false, false);
-//			self->turn(true, true, false, 90);
-//			self->turn(true, true, false, 90);
-//
-//
-//		    osDelay(500);
-//		    self->turn(false, true, false, 90);
-//			self->move(true, 35, 35, false, false);
-//			self->turn(true, true, false, 90);
-//			self->turn(true, true, false, 90);
-
-
-
 
 			//while(1){} // uncomment this code if you are using any of the test code above.
 
@@ -232,6 +200,7 @@ namespace AppMotion {
 
 	void MotionController::move(bool isFwd, uint32_t arg, uint32_t speed, bool isCrawl, bool nostop) {
 		emergency = false;
+		sensor_data.is_moving = true;
 		servo->turnFront();
 
 		lmotor->setSpeed(speed, isFwd);
@@ -280,8 +249,21 @@ namespace AppMotion {
 
 				// Close to target check
 				if (cur_left > target - 2000 || cur_right > target - 2000) {
-					lmotor->setSpeed(map(target - cur_left, 2000, 330, 35, 15), isFwd);
-					rmotor->setSpeed(map(target - cur_right, 2000, 330, 35, 15), isFwd);
+
+
+					float pid_left = map(target - cur_left, 2000, 330, 35, 15);
+					float pid_right = map(target - cur_left, 2000, 330, 35, 15);
+
+//					if (!isFwd) {
+//						pid_left = pid_left * 1.5;
+//					}
+
+
+					lmotor->setSpeed(pid_left, isFwd);
+					rmotor->setSpeed(pid_right, isFwd);
+//
+//					lmotor->setSpeed(500, isFwd);
+//					rmotor->setSpeed(500, isFwd);
 				}
 
 				// Use PID
@@ -292,6 +274,14 @@ namespace AppMotion {
 					float pid_left_d = PID_calc(&this->sync_left_pid, speed_error, 0);
 					float pid_right_d = PID_calc(&this->sync_right_pid, -speed_error, 0);
 
+//					if (isFwd) {
+//						pid_left = pid_left * 1.5;
+//					}
+//
+//					if (!isFwd) {
+//						pid_left = pid_left * 6.5;
+//					}
+
 					// Update the speed
 					lmotor->_setDutyCycleVal((uint32_t) ((pid_left + pid_left_d) > 1000 ?(pid_left + pid_left_d) : 1000), isFwd);
 					rmotor->_setDutyCycleVal((uint32_t) ((pid_right + pid_right_d) > 1000 ?(pid_right + pid_right_d) : 1000), isFwd);
@@ -301,7 +291,7 @@ namespace AppMotion {
 			l_encoder_count = lencoder->getCount();
 			r_encoder_count = rencoder->getCount();
 
-			if ((cur_left > target && cur_right > target) || emergency)
+			if ((cur_left > target || cur_right > target) || emergency)
 			{
 				sensor_data.last_halt_val = (uint32_t) (cur_left>cur_right?cur_right:cur_left) * DISTANCE_PER_ENCODER_PULSE;
 				sensor_data.cur_left = cur_left;
@@ -326,14 +316,16 @@ namespace AppMotion {
 		emergency = false;
 		lmotor->halt();
 		rmotor->halt();
+		sensor_data.is_moving = false;
 	}
 
 	void MotionController::turn(bool isRight, bool isFwd, bool arc, uint32_t arg) {
+		sensor_data.is_moving = true;
 		emergency = false;
 		isRight ? servo->turnRight() : servo->turnLeft();
 
-		isRight ? lmotor->setSpeed(51, isFwd) : lmotor->setSpeed(20, !isFwd);
-		isRight ? rmotor->setSpeed(20, !isFwd) : rmotor->setSpeed(51, isFwd);
+		isRight ? lmotor->setSpeed(71, isFwd) : lmotor->setSpeed(20, isFwd);
+		isRight ? rmotor->setSpeed(20, isFwd) : rmotor->setSpeed(51, isFwd);
 
 		if(arc) // arc increases turn radius
 		{
@@ -417,6 +409,7 @@ namespace AppMotion {
 		emergency = false;
 		lmotor->halt();
 		rmotor->halt();
+		sensor_data.is_moving = false;
 	}
 
 	void MotionController::emergencyStop() {
