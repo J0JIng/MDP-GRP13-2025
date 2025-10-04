@@ -52,6 +52,7 @@ class SerialCmdBaseLL:
         QTRN_ALL = b'k'
         LAST_HALT = b'o'
         HALT_CHAR = b'h'
+        RST_SEN_VAL = b'n'
 
     class KeyWord(Enum):
         WARN_OBSTACLE = "obst"
