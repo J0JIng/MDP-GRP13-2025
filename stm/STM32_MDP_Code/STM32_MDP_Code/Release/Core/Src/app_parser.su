@@ -5,6 +5,6 @@
 ../Core/Src/app_parser.cpp:62:1:AppParser::Processor::~Processor()	0	static
 ../Core/Src/app_parser.cpp:67:6:static void AppParser::Processor::startImpl(void*)	0	static
 ../Core/Src/app_parser.cpp:72:6:void AppParser::Processor::start()	16	static
-../Core/Src/app_parser.cpp:261:6:static void AppParser::Processor::returnSensorRequestCmd(AppParser::BUF_CMP_t)	48	static
-../Core/Src/app_parser.cpp:309:15:static AppParser::MOTION_PKT_t* AppParser::Processor::getMotionCmdFromBytes(AppParser::BUF_CMP_t*)	16	static
+../Core/Src/app_parser.cpp:267:6:static void AppParser::Processor::returnSensorRequestCmd(AppParser::BUF_CMP_t)	48	static
+../Core/Src/app_parser.cpp:315:15:static AppParser::MOTION_PKT_t* AppParser::Processor::getMotionCmdFromBytes(AppParser::BUF_CMP_t*)	16	static
 ../Core/Src/app_parser.cpp:86:6:static void AppParser::Processor::processorTask(void*)	80	static
