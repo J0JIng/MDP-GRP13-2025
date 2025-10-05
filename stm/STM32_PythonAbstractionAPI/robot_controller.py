@@ -419,7 +419,8 @@ class RobotController:
         self.drv.add_args_bytes(999)
         self.drv.pad_to_end()
         return self.drv.ll_is_valid(self.drv.send_cmd())
-    
+
+    #  WARNING: Use this only during the init phase
     def set_reset_sensor_values(self) -> bool:
         self.drv.construct_cmd()
         self.drv.add_cmd_byte(True)
