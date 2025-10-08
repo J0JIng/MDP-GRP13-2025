@@ -200,7 +200,7 @@ class RobotController:
         chunk_large_moves: when True and dist > 20cm, the movement is broken
         into segments of up to 20cm with a small pause in between.
         '''
-
+        self.set_reset_sensor_values()
         self.validate_dist(dist)
         if (
             chunk_large_moves
@@ -261,7 +261,7 @@ class RobotController:
         chunk_large_moves: when True and dist > 20cm, the movement is broken
         into segments of up to 20cm with a small pause in between.
         '''
-
+        self.set_reset_sensor_values()
         self.validate_dist(dist)
         if (
             chunk_large_moves
@@ -312,7 +312,7 @@ class RobotController:
         dir = True means turn forward, dir = False means turn backward.
         returns True if command was acknowledged, False otherwise.
         '''
-
+        self.set_reset_sensor_values()
         self.validate_angle(angle)
 
         attempts = 3 if retry else 1
@@ -346,7 +346,7 @@ class RobotController:
         dir = True means turn forward, dir = False means turn backward.
         returns True if command was acknowledged, False otherwise.
         '''
-
+        self.set_reset_sensor_values()
         self.validate_angle(angle)
 
         attempts = 3 if retry else 1
@@ -431,6 +431,7 @@ class RobotController:
 
             time.sleep(self.MOVE_POLL_INTERVAL_S)
 
+        self.set_reset_sensor_values()
         return False
 
     def get_quaternion(self) -> Optional[list]:
@@ -624,10 +625,19 @@ class RobotController:
         return ret
 
     def set_reset_sensor_values(self) -> bool:
-        self.drv.construct_cmd()
-        self.drv.add_cmd_byte(True)
-        self.drv.add_module_byte(self.drv.Modules.SENSOR)
-        self.drv.add_sensor_byte(self.drv.SensorCmd.RST_SEN_VAL)
-        self.drv.add_args_bytes(0)
-        self.drv.pad_to_end()
-        return self.drv.ll_is_valid(self.drv.send_cmd())
+        attempts = 3
+
+        for attempt in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.SENSOR)
+            self.drv.add_sensor_byte(self.drv.SensorCmd.RST_SEN_VAL)
+            self.drv.add_args_bytes(0)
+            self.drv.pad_to_end()
+
+            if self.drv.ll_is_valid(self.drv.send_cmd()):
+                return True
+
+            self._sleep_cmd_retry(attempt, attempts)
+
+        return False
