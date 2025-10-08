@@ -546,9 +546,9 @@ class RaspberryPi:
 
             # Higher brightness retry
 
-            if results['image_id'] != 'NA' or retry_count > 6:
+            if results['image_id'] != 'NA' or results['image_id'] != '10' or retry_count > 6:  # success or max retries reached
                 break
-            if results['image_id'] == 'NA' and not adjustment_done:
+            if results['image_id'] == 'NA' or results['image_id'] == '10' and not adjustment_done:  # failure on first attempt
                 if _perform_adjustment("BS10", "Image rec failed on first attempt; moving backward 10cm."):
                     self.logger.debug("Backward adjustment completed successfully.")
                 else:
