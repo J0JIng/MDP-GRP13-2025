@@ -65,6 +65,9 @@ class RaspberryPi:
         self.obstacles = self.manager.dict()
         self.current_location = self.manager.dict()
         self.failed_attempt = False
+        self.adjustment_pending = self.manager.Value('i', 0)
+        self.adjustment_event = self.manager.Event()
+        self.adjustment_last_result = self.manager.Value('b', True)
 
     def start(self):
         """Starts the RPi orchestrator"""
@@ -272,6 +275,12 @@ class RaspberryPi:
                     self.expecting_rs_ack.value = False
                     self.logger.debug("ACK for RS00 from STM32 received.")
                     continue
+                if self.adjustment_pending.value > 0:
+                    self.adjustment_pending.value -= 1
+                    self.adjustment_last_result.value = True
+                    self.adjustment_event.set()
+                    self.logger.debug("ACK for adjustment command received; retaining movement lock.")
+                    continue
                 try:
                     self.movement_lock.release()
                     try:
@@ -304,6 +313,12 @@ class RaspberryPi:
                 except Exception:
                     self.logger.warning("Tried to release a released lock!")
             elif message.startswith("NACK"):
+                if self.adjustment_pending.value > 0:
+                    self.adjustment_pending.value -= 1
+                    self.adjustment_last_result.value = False
+                    self.adjustment_event.set()
+                    self.logger.warning("Adjustment command returned NACK from STM32.")
+                    continue
                 self.logger.warning("Received NACK from STM32; releasing movement lock to avoid deadlock.")
                 try:
                     self.movement_lock.release()
@@ -463,6 +478,31 @@ class RaspberryPi:
         min_shutter_us = 8000
         increase_factor = 1.6
         decrease_factor = 0.6
+        adjustment_done = False
+
+        def _perform_adjustment(command: str, description: str) -> bool:
+            self.logger.info(description)
+            try:
+                self.adjustment_event.clear()
+            except Exception:
+                pass
+            self.adjustment_pending.value += 1
+            self.adjustment_last_result.value = False
+            try:
+                self.stm_link.send(command)
+            except Exception as exc:
+                self.logger.error("Failed to send %s to STM32: %s", command, exc)
+                if self.adjustment_pending.value > 0:
+                    self.adjustment_pending.value -= 1
+                self.adjustment_event.set()
+                return False
+
+            signalled = self.adjustment_event.wait(timeout=5)
+            if not signalled:
+                self.logger.warning("Timed out waiting for STM32 to execute %s", command)
+                return False
+
+            return bool(self.adjustment_last_result.value)
 
         while True:
 
@@ -508,6 +548,12 @@ class RaspberryPi:
 
             if results['image_id'] != 'NA' or retry_count > 6:
                 break
+            if results['image_id'] == 'NA' and not adjustment_done:
+                if _perform_adjustment("BS10", "Image rec failed on first attempt; moving backward 10cm."):
+                    self.logger.debug("Backward adjustment completed successfully.")
+                else:
+                    self.logger.warning("Backward adjustment may have failed; continuing attempts regardless.")
+                adjustment_done = True
             elif retry_count > 3:
                 self.logger.info(f"Image recognition results: {results}")
                 self.logger.info("Recapturing with lower shutter speed...")
@@ -528,6 +574,12 @@ class RaspberryPi:
                 self.logger.debug(
                     "Increasing shutter for next attempt to %dus", current_shutter_us
                 )
+
+        if adjustment_done:
+            if _perform_adjustment("FS10", "Returning to original position; moving forward 10cm."):
+                self.logger.debug("Forward adjustment completed successfully.")
+            else:
+                self.logger.warning("Forward adjustment may have failed; robot position may be offset.")
 
         # release lock so that bot can continue moving
         self.movement_lock.release()
