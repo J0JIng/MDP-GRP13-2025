@@ -43,6 +43,7 @@ class RobotController:
     MOVE_STOP_STABLE_WINDOW_S: float = 0.2
     MOVE_POLL_INTERVAL_S: float = 0.05
     MOVE_INITIAL_DELAY_S: float = 0.05
+    CMD_RETRY_BACKOFF_BASE_S: float = 0.1
 
     def __init__(self, port: str, baudrate: int, _inst_obstr_cb: Optional[Callable[..., None]] = None):
         self.drv = SerialCmdBaseLL(port, baudrate)
@@ -93,7 +94,7 @@ class RobotController:
         '''
         attempts = 3 if retry else 1
 
-        for _ in range(attempts):
+        for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -106,6 +107,7 @@ class RobotController:
 
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if not ack:
+                self._sleep_cmd_retry(attempt, attempts)
                 continue
 
             time.sleep(self.MOVE_INITIAL_DELAY_S)
@@ -121,6 +123,8 @@ class RobotController:
 
             if detection:
                 return True
+
+            self._sleep_cmd_retry(attempt, attempts)
 
         return False
 
@@ -135,7 +139,7 @@ class RobotController:
         self.validate_dist(dist)
 
         attempts = 3 if retry else 1
-        for i in range(attempts):
+        for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -149,6 +153,8 @@ class RobotController:
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if ack:
                 return self._wait_for_motion_complete()
+
+            self._sleep_cmd_retry(attempt, attempts)
 
         return False
 
@@ -163,7 +169,7 @@ class RobotController:
         self.validate_dist(dist)
 
         attempts = 3 if retry else 1
-        for i in range(attempts):
+        for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -178,6 +184,8 @@ class RobotController:
             if ack:
                 return self._wait_for_motion_complete()
 
+            self._sleep_cmd_retry(attempt, attempts)
+
         return False
 
     def crawl_forward(self, dist: int, retry: bool = True) -> bool:
@@ -191,7 +199,7 @@ class RobotController:
         self.validate_dist(dist)
         attempts = 3 if retry else 1
 
-        for _ in range(attempts):
+        for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -203,6 +211,8 @@ class RobotController:
             if ack:
                 return self._wait_for_motion_complete()
 
+            self._sleep_cmd_retry(attempt, attempts)
+
         return False
 
     def crawl_forward_until_obstacle(self, retry: bool = True) -> bool:
@@ -213,7 +223,7 @@ class RobotController:
 
         attempts = 3 if retry else 1
 
-        for _ in range(attempts):
+        for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -224,6 +234,7 @@ class RobotController:
 
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if not ack:
+                self._sleep_cmd_retry(attempt, attempts)
                 continue
 
             time.sleep(self.MOVE_INITIAL_DELAY_S)
@@ -240,6 +251,8 @@ class RobotController:
             if detection:
                 return True
 
+            self._sleep_cmd_retry(attempt, attempts)
+
         return False
 
     def crawl_backward(self, dist: int, retry: bool = True) -> bool:
@@ -253,7 +266,7 @@ class RobotController:
         self.validate_dist(dist)
         attempts = 3 if retry else 1
 
-        for _ in range(attempts):
+        for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -264,6 +277,8 @@ class RobotController:
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if ack:
                 return self._wait_for_motion_complete()
+
+            self._sleep_cmd_retry(attempt, attempts)
 
         return False
 
@@ -278,7 +293,7 @@ class RobotController:
         self.validate_angle(angle)
 
         attempts = 3 if retry else 1
-        for i in range(attempts):
+        for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -297,6 +312,8 @@ class RobotController:
             if ack:
                 return self._wait_for_motion_complete()
 
+            self._sleep_cmd_retry(attempt, attempts)
+
         return False
 
     def turn_right(self, angle: int, dir: bool, no_brakes: bool = False, retry: bool = True) -> bool:
@@ -310,7 +327,7 @@ class RobotController:
         self.validate_angle(angle)
 
         attempts = 3 if retry else 1
-        for i in range(attempts):
+        for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -329,6 +346,8 @@ class RobotController:
             if ack:
                 return self._wait_for_motion_complete()
 
+            self._sleep_cmd_retry(attempt, attempts)
+
         return False
 
     def halt(self, retry: bool = True):
@@ -338,7 +357,7 @@ class RobotController:
         '''
 
         attempts = 3 if retry else 1
-        for i in range(attempts):
+        for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -348,7 +367,15 @@ class RobotController:
             if ack:
                 return self._wait_for_motion_complete()
 
+            self._sleep_cmd_retry(attempt, attempts)
+
         return False
+
+    def _sleep_cmd_retry(self, attempt: int, attempts: int) -> None:
+        if attempt >= attempts - 1:
+            return
+        delay = self.CMD_RETRY_BACKOFF_BASE_S * (2 ** attempt)
+        time.sleep(delay)
 
     def _wait_for_motion_complete(self) -> bool:
         """
