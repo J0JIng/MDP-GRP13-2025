@@ -44,6 +44,8 @@ class RobotController:
     MOVE_POLL_INTERVAL_S: float = 0.05
     MOVE_INITIAL_DELAY_S: float = 0.05
     CMD_RETRY_BACKOFF_BASE_S: float = 0.1
+    CRAWL_CHUNK_SIZE_CM: int = 20
+    CRAWL_CHUNK_DELAY_S: float = 0.15
 
     def __init__(self, port: str, baudrate: int, _inst_obstr_cb: Optional[Callable[..., None]] = None):
         self.drv = SerialCmdBaseLL(port, baudrate)
@@ -188,32 +190,26 @@ class RobotController:
 
         return False
 
-    def crawl_forward(self, dist: int, retry: bool = True) -> bool:
+    def crawl_forward(self, dist: int, retry: bool = True, chunk_large_moves: bool = True) -> bool:
         '''
         Command robot to move FORWARD by [dist] cm. IN A SLOW MANNER. 
         0 <= dist <= 999
         999 is interpreted as "move FORWARD until obstacle detected".
         returns True if command was acknowledged, False otherwise.
+
+        chunk_large_moves: when True and dist > 20cm, the movement is broken
+        into segments of up to 20cm with a small pause in between.
         '''
 
         self.validate_dist(dist)
-        attempts = 3 if retry else 1
+        if (
+            chunk_large_moves
+            and dist != 999
+            and dist > self.CRAWL_CHUNK_SIZE_CM
+        ):
+            return self._execute_chunked_crawl(dist, self.drv.MotorCmd.FWD_CHAR, retry)
 
-        for attempt in range(attempts):
-            self.drv.construct_cmd()
-            self.drv.add_cmd_byte(True)
-            self.drv.add_module_byte(self.drv.Modules.MOTOR)
-            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.FWD_CHAR)
-            self.drv.add_args_bytes(dist)
-            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.CRAWL_CHAR)
-            self.drv.pad_to_end()
-            ack = self.drv.ll_is_valid(self.drv.send_cmd())
-            if ack:
-                return self._wait_for_motion_complete()
-
-            self._sleep_cmd_retry(attempt, attempts)
-
-        return False
+        return self._send_crawl_distance(dist, self.drv.MotorCmd.FWD_CHAR, retry)
 
     def crawl_forward_until_obstacle(self, retry: bool = True) -> bool:
         '''
@@ -255,22 +251,35 @@ class RobotController:
 
         return False
 
-    def crawl_backward(self, dist: int, retry: bool = True) -> bool:
+    def crawl_backward(self, dist: int, retry: bool = True, chunk_large_moves: bool = True) -> bool:
         '''
         Command robot to move BACKWARD by [dist] cm. IN A SLOW MANNER. 
         0 <= dist <= 999
         999 is interpreted as "move BACKWARD until obstacle detected".
         returns True if command was acknowledged, False otherwise.
+
+        chunk_large_moves: when True and dist > 20cm, the movement is broken
+        into segments of up to 20cm with a small pause in between.
         '''
 
         self.validate_dist(dist)
+        if (
+            chunk_large_moves
+            and dist != 999
+            and dist > self.CRAWL_CHUNK_SIZE_CM
+        ):
+            return self._execute_chunked_crawl(dist, self.drv.MotorCmd.BWD_CHAR, retry)
+
+        return self._send_crawl_distance(dist, self.drv.MotorCmd.BWD_CHAR, retry)
+
+    def _send_crawl_distance(self, dist: int, motor_cmd: SerialCmdBaseLL.MotorCmd, retry: bool) -> bool:
         attempts = 3 if retry else 1
 
         for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
-            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.BWD_CHAR)
+            self.drv.add_motor_cmd_byte(motor_cmd)
             self.drv.add_args_bytes(dist)
             self.drv.add_motor_cmd_byte(self.drv.MotorCmd.CRAWL_CHAR)
             self.drv.pad_to_end()
@@ -281,6 +290,20 @@ class RobotController:
             self._sleep_cmd_retry(attempt, attempts)
 
         return False
+
+    def _execute_chunked_crawl(self, dist: int, motor_cmd: SerialCmdBaseLL.MotorCmd, retry: bool) -> bool:
+        remaining = dist
+
+        while remaining > 0:
+            segment = min(self.CRAWL_CHUNK_SIZE_CM, remaining)
+            if not self._send_crawl_distance(segment, motor_cmd, retry):
+                return False
+
+            remaining -= segment
+            if remaining > 0:
+                time.sleep(self.CRAWL_CHUNK_DELAY_S)
+
+        return True
 
     def turn_left(self, angle: int, dir: bool, no_brakes: bool = False, retry: bool = True) -> bool:
         '''
