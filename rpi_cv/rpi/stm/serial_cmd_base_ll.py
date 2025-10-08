@@ -7,12 +7,13 @@ import serial.serialutil
     This is basically the inverse operation of the robot's Processor class
 '''
 
+
 class SerialCmdBaseLL:
-    ser :serial.Serial  # instance of serial.Serial
-    CMD_LEN :int = 10
-    ACK_TIMEOUT_MS :int = 200
-    payload :bytes = b""
-    is_reading :bool = False
+    ser: serial.Serial  # instance of serial.Serial
+    CMD_LEN: int = 10
+    ACK_TIMEOUT_MS: int = 200
+    payload: bytes = b""
+    is_reading: bool = False
 
     class CmdChar(Enum):
         START_CHAR = b'x'
@@ -52,6 +53,7 @@ class SerialCmdBaseLL:
         QTRN_ALL = b'k'
         LAST_HALT = b'o'
         HALT_CHAR = b'h'
+        RST_SEN_VAL = b'n'
 
     class KeyWord(Enum):
         WARN_OBSTACLE = "obst"
@@ -74,12 +76,12 @@ class SerialCmdBaseLL:
         if len(self.payload) != self.CMD_LEN:
             raise IOError("Command length is not correct")
         # clear buffer
-        self.ser.reset_input_buffer() 
+        self.ser.reset_input_buffer()
         self.ser.reset_output_buffer()
 
         # Send payload to STM and receive response
         self.ser.write(self.payload)
-        ret = self.ser.readline() 
+        ret = self.ser.readline()
 
         ret = ret.replace(b'\x00', b'')
         print("[LL] Sending command: " + str(self.payload))
@@ -120,5 +122,5 @@ class SerialCmdBaseLL:
         self.payload += bytes(arg_str, 'utf-8')
 
     def pad_to_end(self) -> None:
-        while len(self.payload) < self.CMD_LEN - 1: # Last byte for CmdChar.END_CHAR
+        while len(self.payload) < self.CMD_LEN - 1:  # Last byte for CmdChar.END_CHAR
             self.payload += self.CmdChar.PAD_CHAR.value

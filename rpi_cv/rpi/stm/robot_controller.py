@@ -622,3 +622,12 @@ class RobotController:
         except ValueError:
             return None
         return ret
+
+    def set_reset_sensor_values(self) -> bool:
+        self.drv.construct_cmd()
+        self.drv.add_cmd_byte(True)
+        self.drv.add_module_byte(self.drv.Modules.SENSOR)
+        self.drv.add_sensor_byte(self.drv.SensorCmd.RST_SEN_VAL)
+        self.drv.add_args_bytes(0)
+        self.drv.pad_to_end()
+        return self.drv.ll_is_valid(self.drv.send_cmd())
