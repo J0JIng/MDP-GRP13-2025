@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="24dp"
+    tools:context=".ui.bluetooth.BluetoothFragment">
+
+    <!-- Top bar -->
+    <TextView
+        android:id="@+id/titleGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="MDP Group 13"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="@color/teal_darkest"
+        android:paddingBottom="8dp" />
+
+    <!-- Status row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:id="@+id/textView_bluetooth"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bluetooth Status: Not Connected"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="@color/bluetooth_status_color" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <Switch
+            android:id="@+id/switchBluetooth"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bluetooth" />
+    </LinearLayout>
+
+    <!-- Action buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:paddingBottom="8dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_scan"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="@string/button_scan"
+            android:textAllCaps="false"
+            android:textColor="@android:color/white"
+            app:icon="@drawable/start_scanning"
+            app:iconGravity="textStart"
+            app:iconPadding="10dp"
+            app:iconTint="@android:color/white"
+            app:iconSize="22dp"
+            app:backgroundTint="@color/teal_dark"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            app:cornerRadius="30dp"/>
+
+        <Space
+            android:layout_width="16dp"
+            android:layout_height="1dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_stop_scan"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="Stop Scanning"
+            android:textAllCaps="false"
+            android:textColor="@android:color/white"
+            app:icon="@drawable/stop_scanning"
+            app:iconGravity="textStart"
+            app:iconPadding="10dp"
+            app:iconTint="@android:color/white"
+            app:iconSize="22dp"
+            app:backgroundTint="@color/teal_dark"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            app:cornerRadius="30dp"/>
+
+    </LinearLayout>
+
+    <!-- Center animation -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="220dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="16dp"
+        android:foregroundGravity="center">
+
+        <com.airbnb.lottie.LottieAnimationView
+            android:id="@+id/lottieScan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            app:lottie_autoPlay="false"
+            app:lottie_loop="true"
+            app:lottie_rawRes="@raw/bluetooth_scan" />
+
+        <ProgressBar
+            android:id="@+id/progressAvailable"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:visibility="gone"/>
+    </FrameLayout>
+
+    <!-- Lists row: fills remaining height -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:weightSum="2"
+        android:gravity="top">
+
+        <!-- Available devices -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="0dp"
+            android:layout_height="450dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            app:cardUseCompatPadding="true"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:id="@+id/tvAvailable"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/text_available"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    android:paddingBottom="6dp" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#E6E6E6" />
+
+                <ListView
+                    android:id="@+id/lvAvailable"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:divider="@color/white"
+                    android:dividerHeight="8dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Paired devices -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="0dp"
+            android:layout_height="450dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            app:cardUseCompatPadding="true"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:id="@+id/tvPaired"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/text_paired"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    android:paddingBottom="6dp" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#E6E6E6" />
+
+                <ListView
+                    android:id="@+id/lvPaired"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:divider="@color/white"
+                    android:dividerHeight="8dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+    </LinearLayout>
+</LinearLayout>
