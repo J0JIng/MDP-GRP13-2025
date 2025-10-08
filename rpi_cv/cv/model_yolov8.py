@@ -60,7 +60,7 @@ def draw_own_bbox(img, x1, y1, x2, y2, label, color=(36, 255, 12), text_color=(0
 
     img_rgb = cv2.rectangle(img_rgb, (x1, y1), (x2, y2), color, 2)
     (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 1.8, 1)
-    img_rgb = cv2.rectangle(img_rgb, (x1, y1 - 20), (x1 + w, y1), color, -1)
+    img_rgb = cv2.rectangle(img_rgb, (x1, y1 - 43), (x1 + w, y1), color, -1)
     img_rgb = cv2.putText(img_rgb, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 1.8, text_color, 1)
     cv2.imwrite(f"own_results/annotated_image_{label}_{rand}.jpg", img_rgb)
 
