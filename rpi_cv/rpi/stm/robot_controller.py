@@ -180,7 +180,7 @@ class RobotController:
 
         return False
 
-    def crawl_forward(self, dist: int) -> bool:
+    def crawl_forward(self, dist: int, retry: bool = True) -> bool:
         '''
         Command robot to move FORWARD by [dist] cm. IN A SLOW MANNER. 
         0 <= dist <= 999
@@ -189,17 +189,21 @@ class RobotController:
         '''
 
         self.validate_dist(dist)
-        self.drv.construct_cmd()
-        self.drv.add_cmd_byte(True)
-        self.drv.add_module_byte(self.drv.Modules.MOTOR)
-        self.drv.add_motor_cmd_byte(self.drv.MotorCmd.FWD_CHAR)
-        self.drv.add_args_bytes(dist)
-        self.drv.add_motor_cmd_byte(self.drv.MotorCmd.CRAWL_CHAR)
-        self.drv.pad_to_end()
-        ack = self.drv.ll_is_valid(self.drv.send_cmd())
-        if not ack:
-            return False
-        return self._wait_for_motion_complete()
+        attempts = 3 if retry else 1
+
+        for _ in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.MOTOR)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.FWD_CHAR)
+            self.drv.add_args_bytes(dist)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.CRAWL_CHAR)
+            self.drv.pad_to_end()
+            ack = self.drv.ll_is_valid(self.drv.send_cmd())
+            if ack:
+                return self._wait_for_motion_complete()
+
+        return False
 
     def crawl_forward_until_obstacle(self, retry: bool = True) -> bool:
         '''
@@ -238,7 +242,7 @@ class RobotController:
 
         return False
 
-    def crawl_backward(self, dist: int) -> bool:
+    def crawl_backward(self, dist: int, retry: bool = True) -> bool:
         '''
         Command robot to move BACKWARD by [dist] cm. IN A SLOW MANNER. 
         0 <= dist <= 999
@@ -247,17 +251,21 @@ class RobotController:
         '''
 
         self.validate_dist(dist)
-        self.drv.construct_cmd()
-        self.drv.add_cmd_byte(True)
-        self.drv.add_module_byte(self.drv.Modules.MOTOR)
-        self.drv.add_motor_cmd_byte(self.drv.MotorCmd.BWD_CHAR)
-        self.drv.add_args_bytes(dist)
-        self.drv.add_motor_cmd_byte(self.drv.MotorCmd.CRAWL_CHAR)
-        self.drv.pad_to_end()
-        ack = self.drv.ll_is_valid(self.drv.send_cmd())
-        if not ack:
-            return False
-        return self._wait_for_motion_complete()
+        attempts = 3 if retry else 1
+
+        for _ in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.MOTOR)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.BWD_CHAR)
+            self.drv.add_args_bytes(dist)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.CRAWL_CHAR)
+            self.drv.pad_to_end()
+            ack = self.drv.ll_is_valid(self.drv.send_cmd())
+            if ack:
+                return self._wait_for_motion_complete()
+
+        return False
 
     def turn_left(self, angle: int, dir: bool, no_brakes: bool = False, retry: bool = True) -> bool:
         '''
