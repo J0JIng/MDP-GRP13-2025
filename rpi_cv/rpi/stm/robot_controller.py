@@ -45,7 +45,7 @@ class RobotController:
     MOVE_INITIAL_DELAY_S: float = 0.05
     CMD_RETRY_BACKOFF_BASE_S: float = 0.1
     CRAWL_CHUNK_SIZE_CM: int = 20
-    CRAWL_CHUNK_DELAY_S: float = 0.15
+    CRAWL_CHUNK_DELAY_S: float = 0.2
 
     def __init__(self, port: str, baudrate: int, _inst_obstr_cb: Optional[Callable[..., None]] = None):
         self.drv = SerialCmdBaseLL(port, baudrate)
