@@ -212,6 +212,19 @@ def predict_image_week_9(image, model):
     image_id = str(NAME_TO_ID[pred['name']]) if not isinstance(pred, str) else 'NA'
     return image_id
 
+def auto_grid(n:int):
+    """
+    Given n images, return (rows,cols) for stitching.
+    """
+    if n <= 0: return (0,0)
+    if n == 1: return (1,1)
+    if n == 2: return (2,1)
+    if n == 3: return (3,1)
+    if n == 4: return (2,2) 
+    if n <= 6: return (3,2)
+    return (2,4)  # max 8 images supported
+
+
 def stitch_image_own():
     """
     Stitches images saved in own_results/ (kept from your original function) 
@@ -226,18 +239,53 @@ def stitch_image_own():
     images = [Image.open(x[0]) for x in sortedByTimeStampImages]
     if not images:
         return Image.new('RGB', (1, 1))
+    
+    # Use the most recent up to 8 images (still works if fewer than 4 exist)
+    take = min(8, len(sortedByTimeStampImages))
+    selectedPairs = sortedByTimeStampImages[-take:]
 
-    width, height = zip(*(i.size for i in images))
-    total_width = sum(width)
-    max_height = max(height)
-    stitchedImg = Image.new('RGB', (total_width, max_height))
-    x_offset = 0
+    # Open as RGB
+    images = [Image.open(p).convert('RGB') for p, _ in selectedPairs]
+    n = len(images)
+    rows, cols = auto_grid(n)
 
+    # Auto cell size: derive from median-ish height (clamped), compute max width when scaled to that height
+    heights = sorted([im.size[1] for im in images if im.size[1] > 0])
+    if not heights:
+        return Image.new('RGB', (1, 1))
+    cell_h = heights[len(heights)//2]
+    cell_h = max(240, min(600, cell_h))  # sane visual clamp
+
+    scaled_ws = []
     for im in images:
-        stitchedImg.paste(im, (x_offset, 0))
-        x_offset += im.size[0]
-    stitchedImg.save(stitchedPath)
+        w, h = im.size
+        scale = cell_h / float(h) if h > 0 else 1.0
+        scaled_ws.append(int(max(1, round(w * scale))))
+    cell_w = max(scaled_ws) if scaled_ws else cell_h
 
+    pad = 10
+    bg = (0, 0, 0)
+    W = cols * cell_w + (cols + 1) * pad
+    H = rows * cell_h + (rows + 1) * pad
+    stitchedImg = Image.new('RGB', (W, H), bg)
+
+    # Paste centered into each cell (preserve aspect)
+    for idx, im in enumerate(images):
+        r, c = divmod(idx, cols)
+        if r >= rows: break
+        x0 = pad + c * (cell_w + pad)
+        y0 = pad + r * (cell_h + pad)
+        w, h = im.size
+        scale = min(cell_w / float(w) if w > 0 else 1.0,
+                    cell_h / float(h) if h > 0 else 1.0)
+        nw, nh = max(1, int(w * scale)), max(1, int(h * scale))
+        im_resized = im.resize((nw, nh), Image.LANCZOS)
+        ox = x0 + (cell_w - nw) // 2
+        oy = y0 + (cell_h - nh) // 2
+        stitchedImg.paste(im_resized, (ox, oy))
+        im.close()
+
+    stitchedImg.save(stitchedPath, quality=90)
     return stitchedImg
 
 
