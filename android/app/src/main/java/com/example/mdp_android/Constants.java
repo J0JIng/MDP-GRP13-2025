@@ -6,4 +6,5 @@ public class Constants {
 
     // Define keys for intent extras
     public static final String EXTRA_BLUETOOTH_MESSAGE = "com.example.mdp_android.EXTRA_BLUETOOTH_MESSAGE";
+
 }

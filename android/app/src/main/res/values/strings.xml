@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">MDP Android App</string>
+    <string name="app_name">MDP Group 13</string>
     <string name="title_home">Home</string>
     <string name="title_bluetooth">Bluetooth</string>
     <string name="title_messages">Messages</string>
@@ -25,8 +25,9 @@
     <string name="text_robotStart">(0, 0, N)</string>
     <string name="text_targetCoorTitle">Target Captured:</string>
     <string name="text_targetCoor"> ID -> TARGET_ID: (0, 0, N)</string>
-    <string name="text_reset">Reset Arena</string>
+    <string name="text_reset">Clear Arena</string>
     <string name="text_obstacleTitle">Obstacles:</string>
+    <string name="text_RobotTitle">Robot:</string>
     <string name="text_robotStartPoint">Set Robot:</string>
     <string name="text_setDirection">Set Direction:</string>
     <string name="text_taskType">Select Task Type:</string>

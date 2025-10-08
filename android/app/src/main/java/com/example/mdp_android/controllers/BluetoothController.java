@@ -393,6 +393,7 @@ public class BluetoothController {
 
                     // Log & (safe) repository write
                     String receivedMessage = new String(payload, StandardCharsets.UTF_8);
+                    Log.d(TAG, "bluetooth received message");
                     Log.d(TAG, "RECEIVED: " + receivedMessage);
                     try {
                         MessageRepository.getInstance()
@@ -406,6 +407,7 @@ public class BluetoothController {
                         Intent i = new Intent(Constants.ACTION_BLUETOOTH_MESSAGE_RECEIVED);
                         i.putExtra(Constants.EXTRA_BLUETOOTH_MESSAGE, receivedMessage);
                         LocalBroadcastManager.getInstance(appContext).sendBroadcast(i);
+                        Log.d(TAG, "Broadcast out with appContext");
                     }
 
                 } catch (IOException e) {
