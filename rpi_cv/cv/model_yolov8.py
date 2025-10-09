@@ -30,7 +30,7 @@ NAME_TO_ID = {
 }
 
 
-def load_model(weights_path="./weights/detectionv1.pt", device=None):
+def load_model(weights_path="./weights/detectionv2.pt", device=None):
     """
     Load a YOLOv8/YOLOv12 model from ultralytics.
     - weights_path: path to your .pt (e.g., 'best.pt', 'yolov8n.pt', 'Week_9.pt')
