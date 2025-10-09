@@ -472,13 +472,15 @@ class RaspberryPi:
             self.logger.warning("Unable to create images directory %s: %s", images_dir, e)
         filepath = images_dir / filename
 
-        retry_count = 0
-        current_shutter_us = 20000
+        base_shutter_us = 20000
+        current_shutter_us = base_shutter_us
         max_shutter_us = 120000
         min_shutter_us = 8000
         increase_factor = 1.6
         decrease_factor = 0.6
         adjustment_done = False
+        backward_offset_applied = False
+        MAX_RETRIES = 6
 
         def _perform_adjustment(command: str, description: str) -> bool:
             self.logger.info(description)
@@ -504,78 +506,149 @@ class RaspberryPi:
 
             return bool(self.adjustment_last_result.value)
 
-        while True:
+        def _capture_series(stage_label: str, allow_backward_adjust: bool) -> tuple[bool, Optional[dict]]:
+            nonlocal current_shutter_us, adjustment_done, backward_offset_applied
+            local_retry = 0
+            current_shutter_us = base_shutter_us
+            last_results: Optional[dict] = None
 
-            retry_count += 1
+            while local_retry < MAX_RETRIES:
+                local_retry += 1
 
-            rpi_str_parts = [
-                "raspistill",
-                "-e", "jpg",
-                "-n",
-                "-t", "500",
-                "-vf", "-hf",
-                "-q", "100",
-                "-sh", "40",
-                "-ISO", "100",
-                "-awb", "auto",
-                "-ss", str(current_shutter_us),
-                "-br", "50",
-                "-co", "10",
-                "-sa", "10",
-                "-o", str(filepath),
-            ]
-            rpistr = " ".join(rpi_str_parts)
+                rpi_str_parts = [
+                    "raspistill",
+                    "-e", "jpg",
+                    "-n",
+                    "-t", "500",
+                    "-vf", "-hf",
+                    "-q", "100",
+                    "-sh", "40",
+                    "-ISO", "100",
+                    "-awb", "auto",
+                    "-ss", str(current_shutter_us),
+                    "-br", "50",
+                    "-co", "10",
+                    "-sa", "10",
+                    "-o", str(filepath),
+                ]
+                rpistr = " ".join(rpi_str_parts)
 
-            self.logger.debug(
-                "Attempt %d capturing with shutter %dus", retry_count, current_shutter_us
-            )
-            os.system(rpistr)
+                self.logger.debug(
+                    "[%s] Attempt %d capturing with shutter %dus",
+                    stage_label,
+                    local_retry,
+                    current_shutter_us,
+                )
+                os.system(rpistr)
 
-            self.logger.debug("Requesting from image API")
+                self.logger.debug("[%s] Requesting from image API", stage_label)
 
-            with open(filepath, 'rb') as image_file:
-                response = requests.post(
-                    url, files={"file": (filename, image_file)})
+                with open(filepath, 'rb') as image_file:
+                    response = requests.post(
+                        url, files={"file": (filename, image_file)})
 
-            if response.status_code != 200:
-                self.logger.error(
-                    "Something went wrong when requesting path from image-rec API. Please try again.")
-                return
+                if response.status_code != 200:
+                    self.logger.error(
+                        "Something went wrong when requesting path from image-rec API. Please try again.")
+                    return False, None
 
-            results = json.loads(response.content)
+                results = json.loads(response.content)
+                last_results = results
 
-            # Higher brightness retry
+                if results['image_id'] not in ('NA', '10'):
+                    self.logger.debug("[%s] Successful recognition on attempt %d", stage_label, local_retry)
+                    return True, results
 
-            if results['image_id'] not in ('NA', '10') or retry_count > 6:   # success or max retries reached
-                break
-            if results['image_id'] in ('NA', '10') and not adjustment_done:  # failure on first attempt
-                if _perform_adjustment("BS10", "Image rec failed on first attempt; moving backward 10cm."):
-                    self.logger.debug("Backward adjustment completed successfully.")
+                if allow_backward_adjust and not adjustment_done:
+                    if _perform_adjustment("BS10", "Image rec failed on first attempt; moving backward 10cm."):
+                        self.logger.debug("Backward adjustment completed successfully.")
+                        backward_offset_applied = True
+                    else:
+                        self.logger.warning("Backward adjustment may have failed; continuing attempts regardless.")
+                    adjustment_done = True
+                    continue
+
+                if local_retry >= MAX_RETRIES:
+                    break
+
+                self.logger.info(f"Image recognition results: {results}")
+                if local_retry > 3:
+                    self.logger.info("Recapturing with lower shutter speed...")
+                    current_shutter_us = max(
+                        int(current_shutter_us * decrease_factor),
+                        min_shutter_us,
+                    )
+                    self.logger.debug(
+                        "[%s] Lowering shutter for next attempt to %dus",
+                        stage_label,
+                        current_shutter_us,
+                    )
                 else:
-                    self.logger.warning("Backward adjustment may have failed; continuing attempts regardless.")
-                adjustment_done = True
-            elif retry_count > 3:
-                self.logger.info(f"Image recognition results: {results}")
-                self.logger.info("Recapturing with lower shutter speed...")
-                current_shutter_us = max(
-                    int(current_shutter_us * decrease_factor),
-                    min_shutter_us,
-                )
-                self.logger.debug(
-                    "Lowering shutter for next attempt to %dus", current_shutter_us
-                )
-            elif retry_count <= 3:
-                self.logger.info(f"Image recognition results: {results}")
-                self.logger.info("Recapturing with higher shutter speed...")
-                current_shutter_us = min(
-                    int(current_shutter_us * increase_factor),
-                    max_shutter_us,
-                )
-                self.logger.debug(
-                    "Increasing shutter for next attempt to %dus", current_shutter_us
+                    self.logger.info("Recapturing with higher shutter speed...")
+                    current_shutter_us = min(
+                        int(current_shutter_us * increase_factor),
+                        max_shutter_us,
+                    )
+                    self.logger.debug(
+                        "[%s] Increasing shutter for next attempt to %dus",
+                        stage_label,
+                        current_shutter_us,
+                    )
+
+            return False, last_results
+
+        capture_success, results = _capture_series("initial", allow_backward_adjust=True)
+        if results is None:
+            return
+
+        if not capture_success:
+            stage_results = results
+
+            fr_attempted = _perform_adjustment(
+                "FR05",
+                "Image rec still failing after backward retries; rotating forward-right 5 degrees.",
+            )
+            if fr_attempted:
+                capture_success, results = _capture_series("forward-right", allow_backward_adjust=False)
+                if results is None:
+                    return
+                if results is not None:
+                    stage_results = results
+            else:
+                self.logger.warning("Forward-right adjustment may have failed; continuing attempts regardless.")
+
+            if fr_attempted:
+                _perform_adjustment(
+                    "BR05",
+                    "Reverting forward-right adjustment; rotating backward-right 5 degrees.",
                 )
 
-        if adjustment_done:
+            if not capture_success:
+                fl_attempted = _perform_adjustment(
+                    "FL05",
+                    "Image rec still failing; rotating forward-left 5 degrees for final retries.",
+                )
+                if fl_attempted:
+                    capture_success, results = _capture_series("forward-left", allow_backward_adjust=False)
+                    if results is None:
+                        return
+                    if results is not None:
+                        stage_results = results
+                else:
+                    self.logger.warning("Forward-left adjustment may have failed; continuing regardless.")
+
+                if fl_attempted:
+                    _perform_adjustment(
+                        "BL05",
+                        "Reverting forward-left adjustment; rotating backward-left 5 degrees.",
+                    )
+
+            results = stage_results
+
+        if backward_offset_applied and not capture_success:
+            self.logger.debug("Image recognition unsuccessful after orientation retries; robot still offset backward.")
+
+        if backward_offset_applied:
             if _perform_adjustment("FS10", "Returning to original position; moving forward 10cm."):
                 self.logger.debug("Forward adjustment completed successfully.")
             else:
