@@ -546,9 +546,9 @@ class RaspberryPi:
 
             # Higher brightness retry
 
-            if results['image_id'] != 'NA' or results['image_id'] != '10' or retry_count > 6:  # success or max retries reached
+            if results['image_id'] not in ('NA', '10') or retry_count > 6:   # success or max retries reached
                 break
-            if results['image_id'] == 'NA' or results['image_id'] == '10' and not adjustment_done:  # failure on first attempt
+            if results['image_id'] in ('NA', '10') and not adjustment_done:  # failure on first attempt
                 if _perform_adjustment("BS10", "Image rec failed on first attempt; moving backward 10cm."):
                     self.logger.debug("Backward adjustment completed successfully.")
                 else:
@@ -593,7 +593,7 @@ class RaspberryPi:
         self.logger.info(
             f"Image recognition results: {results} ({SYMBOL_MAP.get(results['image_id'])})")
 
-        if results['image_id'] == 'NA':
+        if results['image_id'] in ('NA', '10'):
             self.failed_obstacles.append(
                 self.obstacles[int(results['obstacle_id'])])
             self.logger.info(
