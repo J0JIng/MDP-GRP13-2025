@@ -130,6 +130,7 @@ namespace AppParser {
 	static constexpr BUF_CMP_t QTRN_YAW_CHAR = 'y';
 	static constexpr BUF_CMP_t QTRN_ALL_CHAR = 'k';
 	static constexpr BUF_CMP_t MOTOR_MOV = 't';
+	static constexpr BUF_CMP_t RST_SENSOR_VAL = 'n';
 
 	static constexpr BUF_CMP_t LAST_HALT_CHAR = 'o';
 	static constexpr BUF_CMP_t T2_180R_CHAR = '!';

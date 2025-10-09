@@ -136,11 +136,13 @@ namespace AppMotion {
 			// Turn right
 //			self->move(true, 10, 35, false, false);
 //			self->turn(true, true, false, 90);
+//			self->turn(true, false, false, 90);
 //			self->move(true, 10, 35, false, false);
 
 			// Turn left
 //			self->move(true, 10, 35, false, false);
-//			self->turn(false, true, false, 90);
+//			self->turn(false, true, false, 90); // fwd left
+//		    self->turn(false, false, false, 90);
 //			self->move(true, 10, 35, false, false);
 
 			//while(1){} // uncomment this code if you are using any of the test code above.
@@ -177,13 +179,13 @@ namespace AppMotion {
 		}
 	}
 
-	void MotionController::moveConstantPWM(bool isFwd, uint32_t pwm_value, uint32_t duration_ms) {
+	void MotionController::moveConstantPWM(bool isFwd, uint32_t speed, uint32_t duration_ms) {
 	    emergency = false;
 	    servo->turnFront();
 
 	    // Apply constant PWM
-	    lmotor->setSpeed(pwm_value, isFwd);
-	    rmotor->setSpeed(pwm_value, isFwd);
+	    lmotor->setSpeed(speed, isFwd);
+	    rmotor->setSpeed(speed, isFwd);
 
 	    // Run for fixed time
 	    uint32_t timeStart = HAL_GetTick();
@@ -212,19 +214,16 @@ namespace AppMotion {
 			rmotor->setSpeed(35, isFwd);
 		}
 
-		uint32_t timeStart = HAL_GetTick();
 		uint32_t l_encoder_count = lencoder->getCount();
 		uint32_t r_encoder_count = rencoder->getCount();
 		double target = (double) arg / DISTANCE_PER_ENCODER_PULSE;
 
 		double cur_left = 0, cur_right = 0;
 		float count_left = 0, count_right = 0;
-		float init_angle = 0, cur_angle = 0;
 
 		sensor_data.target = target;
 		sensor_data.cur_left = cur_left;
 		sensor_data.cur_right = cur_right;
-		init_angle = sensor_data.yaw_abs;
 
 //		 OLED_ShowString(0, 10, (uint8_t*)"Entered move()");
 //		 OLED_Refresh_Gram();
@@ -238,7 +237,6 @@ namespace AppMotion {
 
 			count_left = (double) lencoder->getDelta(l_encoder_count, lencoder->getCount());
 			count_right = (double) rencoder->getDelta(r_encoder_count, rencoder->getCount());
-			cur_angle = sensor_data.yaw_abs;
 
 
 			cur_left += count_left * LEFT_ENCODER_SCALE;
@@ -254,16 +252,9 @@ namespace AppMotion {
 					float pid_left = map(target - cur_left, 2000, 330, 35, 15);
 					float pid_right = map(target - cur_left, 2000, 330, 35, 15);
 
-//					if (!isFwd) {
-//						pid_left = pid_left * 1.5;
-//					}
-
-
 					lmotor->setSpeed(pid_left, isFwd);
 					rmotor->setSpeed(pid_right, isFwd);
-//
-//					lmotor->setSpeed(500, isFwd);
-//					rmotor->setSpeed(500, isFwd);
+
 				}
 
 				// Use PID
@@ -274,14 +265,6 @@ namespace AppMotion {
 					float pid_left_d = PID_calc(&this->sync_left_pid, speed_error, 0);
 					float pid_right_d = PID_calc(&this->sync_right_pid, -speed_error, 0);
 
-//					if (isFwd) {
-//						pid_left = pid_left * 1.5;
-//					}
-//
-//					if (!isFwd) {
-//						pid_left = pid_left * 6.5;
-//					}
-
 					// Update the speed
 					lmotor->_setDutyCycleVal((uint32_t) ((pid_left + pid_left_d) > 1000 ?(pid_left + pid_left_d) : 1000), isFwd);
 					rmotor->_setDutyCycleVal((uint32_t) ((pid_right + pid_right_d) > 1000 ?(pid_right + pid_right_d) : 1000), isFwd);
@@ -291,7 +274,7 @@ namespace AppMotion {
 			l_encoder_count = lencoder->getCount();
 			r_encoder_count = rencoder->getCount();
 
-			if ((cur_left > target || cur_right > target) || emergency)
+			if ((cur_left > target && cur_right > target) || emergency)
 			{
 				sensor_data.last_halt_val = (uint32_t) (cur_left>cur_right?cur_right:cur_left) * DISTANCE_PER_ENCODER_PULSE;
 				sensor_data.cur_left = cur_left;
@@ -324,7 +307,7 @@ namespace AppMotion {
 		emergency = false;
 		isRight ? servo->turnRight() : servo->turnLeft();
 
-		isRight ? lmotor->setSpeed(71, isFwd) : lmotor->setSpeed(20, isFwd);
+		isRight ? lmotor->setSpeed(51, isFwd) : lmotor->setSpeed(20, isFwd);
 		isRight ? rmotor->setSpeed(20, isFwd) : rmotor->setSpeed(51, isFwd);
 
 		if(arc) // arc increases turn radius

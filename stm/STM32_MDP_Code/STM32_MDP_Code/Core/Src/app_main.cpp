@@ -21,6 +21,27 @@ bool test_run = false;
 void sensorIRTask(void *pv);
 void sensorUSTask(void *pv);
 void sensorIMUTask(void *pv);
+extern "C" void IMU_RequestZeroYaw(void);
+
+static volatile float s_yaw_zero_offset_deg = 0.0f;
+
+// Wrap angle to [-180, 180]
+static inline float wrap_deg(float a) {
+    while (a > 180.0f) a -= 360.0f;
+    while (a < -180.0f) a += 360.0f;
+    return a;
+}
+
+// Call this whenever you want "current heading = 0"
+
+
+// Optional: request flag if you want to zero from another thread/ISR safely
+static volatile uint8_t s_request_zero = 0;
+extern "C" void IMU_RequestZeroYaw(void) {
+    s_request_zero = 1;
+}
+
+
 
 
 osThreadId_t oledTaskHandle;
@@ -209,6 +230,14 @@ float SEq_2 = 0.0f;
 float SEq_3 = 0.0f;
 float SEq_4 = 0.0f;
 
+extern "C" void IMU_ZeroYawNow(void) {
+    // Compute yaw from current AHRS quaternion without waiting for next cycle
+    float q0 = SEq_1, q1 = SEq_2, q2 = SEq_3, q3 = SEq_4;
+    float yaw_now = atan2f(2.0f*(q1*q2 + q0*q3),
+                           (q0*q0 + q1*q1 - q2*q2 - q3*q3)) * 57.29577951308232f;
+    s_yaw_zero_offset_deg = yaw_now;
+}
+
 void sensorIMUTask(void *pv) {
 
 	/**Init IMU**/
@@ -233,52 +262,75 @@ void sensorIMUTask(void *pv) {
 	float DEG2RAD = 0.017453292519943295769236907684886f;
 
 	for (;;) {
-		osDelay(80); // 281hz gyro
-		osThreadYield();
+	        // Your comment says "281hz gyro", but delay is 80ms (~12.5 Hz). Keep as you had:
+	        osDelay(80);
+	        osThreadYield();
 
-		IMU_AccelRead(&imu);
-		IMU_GyroRead(&imu);
+	        // Handle deferred zero requests
+	        if (s_request_zero) {
+	            s_request_zero = 0;
+	            IMU_ZeroYawNow();
+	        }
 
-		quaternionUpdate(
-				imu.gyro[0] * DEG2RAD,
-				imu.gyro[1] * DEG2RAD,
-				imu.gyro[2] * DEG2RAD,
-				imu.acc[0],
-				imu.acc[1],
-				imu.acc[2],
-				(HAL_GetTick() - timeNow) * 0.001f
-				);
+	        IMU_AccelRead(&imu);
+	        IMU_GyroRead(&imu);
 
-		timeNow = HAL_GetTick();
+	        // dt in seconds
+	        const uint32_t tNow = HAL_GetTick();
+	        const float dt = (tNow - timeNow) * 0.001f;
 
-		imu.q[0] = SEq_1;
-		imu.q[1] = SEq_2;
-		imu.q[2] = SEq_3;
-		imu.q[3] = SEq_4;
+	        quaternionUpdate(
+	            imu.gyro[0] * DEG2RAD,
+	            imu.gyro[1] * DEG2RAD,
+	            imu.gyro[2] * DEG2RAD,
+	            imu.acc[0],
+	            imu.acc[1],
+	            imu.acc[2],
+	            dt
+	        );
 
-		sensor_data.yaw_abs_prev = sensor_data.yaw_abs;
+	        timeNow = tNow;
 
-		// yaw = atan2(2(q1​q2​+q0​q3​),q02​+q12​−q22​−q32​)
-		sensor_data.yaw_abs = atan2(
-				2.0f * (imu.q[1] * imu.q[2] + imu.q[0] * imu.q[3]),
-				imu.q[0] * imu.q[0] + imu.q[1] * imu.q[1] - imu.q[2] * imu.q[2] - imu.q[3] * imu.q[3])
-				* 57.295779513082320876798154814105f;
+	        // Pull back updated quaternion from your AHRS globals
+	        // Pull latest quaternion
+	        imu.q[0] = SEq_1;
+	        imu.q[1] = SEq_2;
+	        imu.q[2] = SEq_3;
+	        imu.q[3] = SEq_4;
 
-		sensor_data.yaw_abs_time = timeNow;
-//		uint16_t len = sprintf(
-//				&sbuf[0],
-//				"%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f\r\n",
-//				imu.acc[0],imu.acc[1],imu.acc[2],
-//				imu.gyro[0], imu.gyro[1],imu.gyro[2],
-//				imu.q[0],
-//				sensor_data.yaw_abs,
-//				sensor_data.ir_distL
-//				);
-//
-//		HAL_UART_Transmit(&huart3, (uint8_t*) sbuf, len, 10);
-		is_task_alive_struct.senr = true;
+	        sensor_data.yaw_abs_prev = sensor_data.yaw_abs;
 
-	}
+	        // Compute absolute yaw (deg)
+	        sensor_data.yaw_abs = atan2f(
+	            2.0f * (imu.q[1] * imu.q[2] + imu.q[0] * imu.q[3]),
+	            (imu.q[0]*imu.q[0] + imu.q[1]*imu.q[1] - imu.q[2]*imu.q[2] - imu.q[3]*imu.q[3])
+	        ) * 57.29577951308232f;
+
+	        // >>> Capture the zero request *after* yaw_abs is up-to-date <<<
+	        if (s_request_zero) {
+	            s_request_zero = 0;
+	            s_yaw_zero_offset_deg = sensor_data.yaw_abs;  // capture NOW
+	        }
+
+	        // Now publish the zeroed yaw
+	        sensor_data.yaw_abs = wrap_deg(sensor_data.yaw_abs - s_yaw_zero_offset_deg);
+
+	        sensor_data.yaw_abs_time = timeNow;
+
+	        // Optional debug print
+	        // uint16_t len = (uint16_t)snprintf(
+	        //     &sbuf[0], sizeof(sbuf),
+	        //     "%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f\r\n",
+	        //     imu.acc[0], imu.acc[1], imu.acc[2],
+	        //     imu.gyro[0], imu.gyro[1], imu.gyro[2],
+	        //     imu.q[0],
+	        //     sensor_data.yaw,            // print zeroed yaw
+	        //     sensor_data.ir_distL
+	        // );
+	        // HAL_UART_Transmit(&huart3, (uint8_t*) sbuf, len, 10);
+
+	        is_task_alive_struct.senr = true;
+	    }
 }
 
 #define gyroMeasError 3.14159265358979f * (1.0f / 180.0f)

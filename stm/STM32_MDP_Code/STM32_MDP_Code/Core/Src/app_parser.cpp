@@ -188,7 +188,7 @@ void Processor::processorTask(void *pv) {
 				case SENSOR_CHAR: {
 					uint32_t val = strtol((const char*) &msg.buffer[4], NULL,
 							10);
-					if (val == 0)
+					if (val == 0 && !isEq<BUF_CMP_t>(RST_SENSOR_VAL, msg.buffer[3]))
 						break;
 
 					switch (msg.buffer[3]) {
@@ -205,6 +205,13 @@ void Processor::processorTask(void *pv) {
 						sensor_data.ir_dist_th_R = (float) val;
 						if (val == 999)
 							sensor_data.ir_dist_th_R = 0;
+						HAL_UART_Transmit(&huart3, (BUF_CMP_t*) ack,
+								sizeof(ack), 10);
+						break;
+					}
+					case RST_SENSOR_VAL: {
+//						sensor_data.yaw_abs = 0.0;
+						IMU_RequestZeroYaw();
 						HAL_UART_Transmit(&huart3, (BUF_CMP_t*) ack,
 								sizeof(ack), 10);
 						break;

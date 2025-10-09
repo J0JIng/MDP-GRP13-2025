@@ -1,10 +1,12 @@
-../Core/Src/app_main.cpp:132:6:void sensorIRTask(void*)	11
-../Core/Src/app_main.cpp:97:6:void initializeCPPconstructs()	1
-../Core/Src/app_main.cpp:194:6:void sensorUSTask(void*)	1
-../Core/Src/app_main.cpp:287:6:void quaternionUpdate(float, float, float, float, float, float, float)	1
-../Core/Src/app_main.cpp:212:6:void sensorIMUTask(void*)	3
-../Core/Src/app_main.cpp:360:6:void _ext_sig_halt()	1
-../Core/Src/app_main.cpp:364:6:void HAL_UART_RxCpltCallback(UART_HandleTypeDef*)	2
-../Core/Src/app_main.cpp:370:6:void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef*)	5
-../Core/Src/app_main.cpp:394:1:cpp)	1
-../Core/Src/app_main.cpp:394:1:cpp)	1
+../Core/Src/app_main.cpp:153:6:void sensorIRTask(void*)	11
+../Core/Src/app_main.cpp:40:17:void IMU_RequestZeroYaw()	1
+../Core/Src/app_main.cpp:118:6:void initializeCPPconstructs()	1
+../Core/Src/app_main.cpp:215:6:void sensorUSTask(void*)	1
+../Core/Src/app_main.cpp:233:17:void IMU_ZeroYawNow()	1
+../Core/Src/app_main.cpp:339:6:void quaternionUpdate(float, float, float, float, float, float, float)	1
+../Core/Src/app_main.cpp:241:6:void sensorIMUTask(void*)	7
+../Core/Src/app_main.cpp:412:6:void _ext_sig_halt()	1
+../Core/Src/app_main.cpp:416:6:void HAL_UART_RxCpltCallback(UART_HandleTypeDef*)	2
+../Core/Src/app_main.cpp:422:6:void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef*)	5
+../Core/Src/app_main.cpp:446:1:cpp)	1
+../Core/Src/app_main.cpp:446:1:cpp)	1

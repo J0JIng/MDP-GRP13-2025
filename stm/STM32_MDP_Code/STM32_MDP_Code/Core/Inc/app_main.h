@@ -26,6 +26,7 @@ const uint32_t USONIC_VALID_MASK  = 0x40;   // Ultrasonic sensor valid
 void sensorIRTask(void *pv);                 // Task to handle IR sensor
 void sensorUSTask(void *pv);				 // Task to handle ultra sonic sensor
 void sensorIMUTask(void *pv);                // Task to handle IMU sensor
+void IMU_RequestZeroYaw(void);
 
 
 void UARTReceiveTask(void const * argument); // Task to handle UART reception
