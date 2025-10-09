@@ -16,6 +16,7 @@ import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.widget.Toast;
 import android.os.Handler;
+import android.os.Looper;
 
 
 import androidx.annotation.Nullable;
@@ -94,6 +95,9 @@ public class Map extends View {
     private static boolean start = false;
 
     private static boolean taskType = false;
+
+    // add near other state fields
+    private boolean draggingRobot = false;
 
     public void setStart(boolean start) {
         this.start = start;
@@ -650,37 +654,64 @@ public class Map extends View {
         return true;
     }
 
+    @Override
     public boolean onDragEvent(DragEvent event) {
         switch (event.getAction()) {
-            case DragEvent.ACTION_DROP:
+            case DragEvent.ACTION_DROP: {
                 Log.d(TAG, "drop object here");
-                // Determine the coordinates of the drop event
+
+                // 1) Get raw grid indices
                 float x = (event.getX() - focusx) / mScaleFactor + focusx;
                 float y = (event.getY() - focusy) / mScaleFactor + focusy;
+                int gridX = (int) (x / cellSize);      // 1..20 on your map
+                int gridY = (int) (y / cellSize);      // 1..20 (raw), NOT converted
+                int row   = convertRow(gridY);         // row index for cells[][]
 
-                // Convert the coordinates into grid cell coordinates
-                int cellX = (int) (x / cellSize);  // Calculate cell width
-                int cellY = this.convertRow((int) (y / cellSize));  // Calculate cell height
-
-                // Check if the drop is within the bounds of your 20x20 grid
-                if (isWithinCanvasRegion(cellX, cellY) && checkGridEmpty(cellX, this.convertRow(cellY))) {
-                    // handle drop event (place obstacle in grid cell)
-                    String obsID = event.getClipData().getItemAt(0).getText().toString();
-                    setObstacleCoor(cellX, cellY, obsID);
-                    Toast.makeText(getContext(), "Obstacle is placed at (" + (cellX - 1) + ", " + (cellY - 1) + ")", Toast.LENGTH_SHORT).show();
-                    // ADDED: send to RPI obstacle details
-//                    RpiController.sendToRpi(RpiController.getObstacleDetails(obstacleCoor.get(obstacleCoor.size() - 1)));
-                    HomeFragment.modifyObstacleVisibility(Integer.parseInt(obsID) - 1, false);
-                    this.invalidate();
-                } else {
+                // 2) Bounds check (use raw grid coords here)
+                if (!isWithinCanvasRegion(gridX, gridY)) {
                     log("out of boundary");
+                    break;
+                }
+
+                // 3) Payload: either "ROBOT" or an obstacle id "1".."10"
+                String payload = event.getClipData().getItemAt(0).getText().toString();
+
+                if ("ROBOT".equalsIgnoreCase(payload)) {
+                    // Robot needs a 3x3 clear area -> check with row index
+                    if (checkSpaceEnough(gridX, row)) {
+                        // setRobotCoor expects raw grid coords (1..20), not row index
+                        setRobotCoor(gridX, gridY, DEFAULT_DIRECTION);
+                        Toast.makeText(getContext(),
+                                "Robot placed at (" + (gridX - 1) + ", " + (gridY - 1) + ")",
+                                Toast.LENGTH_SHORT).show();
+                        invalidate();
+                    } else {
+                        Toast.makeText(getContext(), "Not enough space for robot here", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    // Obstacle: ensure destination cell is empty (check uses row index)
+                    if (checkGridEmpty(gridX, row)) {
+                        // setObstacleCoor expects raw grid coords (1..20) for both x & y
+                        setObstacleCoor(gridX, gridY, payload);
+                        Toast.makeText(getContext(),
+                                "Obstacle placed at (" + (gridX - 1) + ", " + (gridY - 1) + ")",
+                                Toast.LENGTH_SHORT).show();
+                        try {
+                            HomeFragment.modifyObstacleVisibility(Integer.parseInt(payload) - 1, false);
+                        } catch (NumberFormatException ignored) { /* payload wasn't a number */ }
+                        invalidate();
+                    } else {
+                        log("cell occupied");
+                    }
                 }
                 break;
+            }
             default:
                 break;
         }
         return true;
     }
+
 
     // Map.java (inside the Map class)
     private void addObstacle(int x, int y, String id, String dir) {
@@ -694,12 +725,12 @@ public class Map extends View {
     public void setPresetObstacles(String preset) {
         switch (preset) {
             case "Preset 1":
-                addObstacle(3,  5,  "1", "S");
-                addObstacle(6,  8,  "2", "E");
-                addObstacle(9,  12, "3", "N");
-                addObstacle(12, 16, "4", "W");
-                addObstacle(15, 7,  "5", "S");
-                addObstacle(18, 14, "6", "N");
+                addObstacle(10,  20,  "1", "S");
+                addObstacle(13,  1,  "2", "W");
+                addObstacle(15,  9, "3", "N");
+                addObstacle(20, 15, "4", "W");
+                addObstacle(7, 11,  "5", "E");
+//                addObstacle(18, 14, "6", "N");
 //                addObstacle(7,  19, "7", "W");
 //                addObstacle(14, 10, "8", "E");
 //                addObstacle(20, 4,  "9", "W");
@@ -808,9 +839,10 @@ public class Map extends View {
         float viewX = event.getX();
         float viewY = event.getY();
         float x = (viewX - focusx) / mScaleFactor + focusx;
-        float y = (viewY) / mScaleFactor;
+        float y = (viewY - focusy) / mScaleFactor + focusy;   // ← include focusy
         int cellX = (int) (x / cellSize);
         int cellY = (int) (y / cellSize);
+
 
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN: {
@@ -1095,8 +1127,10 @@ public class Map extends View {
         RpiController.sendToRpi(RpiController.getMapDetails(task, robot, obstacleCoor));
     }
 
+
     public void setObsTargetID(int obsID, int imgID) {
-        log("updating identified image id to obstacle");
+        log("setObsTargetID is called");
+        log("start to update identified image id to obstacle"+"Obs ID: "+ obsID+"Image ID: "+imgID);
         for (int i = 0; i < obstacleCoor.size(); i++) {
             if (obstacleCoor.get(i).getObsID() == obsID) {
                 obstacleCoor.get(i).setTargetID(imgID);
@@ -1107,6 +1141,7 @@ public class Map extends View {
                 return;
             }
         }
+
     }
 
     public Obstacle getObstacle(int obsID) {
@@ -1143,7 +1178,7 @@ public class Map extends View {
                     int row = convertRow(path.get(i).get(1) + 1);
                     int col = path.get(i).get(0) + 1;
                     try {
-                        if (cells[col][row].getType() == "unexplored") {
+                        if ("unexplored".equals(cells[col][row].getType())) {
                             cells[col][row].setType("explored");
                             invalidate();
                         }

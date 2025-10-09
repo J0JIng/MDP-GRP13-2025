@@ -37,7 +37,9 @@ def path_finding():
     robot_direction = int(content['robot_dir'])
 
     # Initialize MazeSolver object with robot size of 20x20, bottom left corner of robot at (1,1), facing north, and whether to use a big turn or not.
-    maze_solver = MazeSolver(20, 20, robot_x, robot_y, robot_direction, big_turn=1)
+    maze_solver = MazeSolver(20, 20, robot_x, robot_y, robot_direction, big_turn=None)
+
+    obstacles = sorted(obstacles, key=lambda o: (o["x"], o["y"]))
 
     # Add each obstacle into the MazeSolver. Each obstacle is defined by its x,y positions, its direction, and its id
     for ob in obstacles:

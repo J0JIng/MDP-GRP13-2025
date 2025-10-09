@@ -140,6 +140,28 @@
                 android:orientation="vertical">
 
                 <TextView
+                    android:id="@+id/text_RobotTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="10dp"
+                    android:fontFamily="@font/urbanist_semibold"
+                    android:text="@string/text_RobotTitle"
+                    android:textColor="@color/black"
+                    android:textSize="17sp" />
+
+                <ImageView
+                    android:id="@+id/robot_drag_source"
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:src="@drawable/robot_north"
+                    android:contentDescription="Drag robot to map"
+                    android:padding="8dp"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+
+                <TextView
                     android:id="@+id/textView_obstacleTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

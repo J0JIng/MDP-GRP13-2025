@@ -59,9 +59,9 @@ def draw_own_bbox(img, x1, y1, x2, y2, label, color=(36, 255, 12), text_color=(0
     cv2.imwrite(f"own_results/raw_image_{label}_{rand}.jpg", img_rgb)
 
     img_rgb = cv2.rectangle(img_rgb, (x1, y1), (x2, y2), color, 2)
-    (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
-    img_rgb = cv2.rectangle(img_rgb, (x1, y1 - 20), (x1 + w, y1), color, -1)
-    img_rgb = cv2.putText(img_rgb, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, text_color, 1)
+    (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 1.8, 1)
+    img_rgb = cv2.rectangle(img_rgb, (x1, y1 - 43), (x1 + w, y1), color, -1)
+    img_rgb = cv2.putText(img_rgb, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 1.8, text_color, 1)
     cv2.imwrite(f"own_results/annotated_image_{label}_{rand}.jpg", img_rgb)
 
 
@@ -212,6 +212,19 @@ def predict_image_week_9(image, model):
     image_id = str(NAME_TO_ID[pred['name']]) if not isinstance(pred, str) else 'NA'
     return image_id
 
+def auto_grid(n:int):
+    """
+    Given n images, return (rows,cols) for stitching.
+    """
+    if n <= 0: return (0,0)
+    if n == 1: return (1,1)
+    if n == 2: return (2,1)
+    if n == 3: return (3,1)
+    if n == 4: return (2,2) 
+    if n <= 6: return (3,2)
+    return (2,4)  # max 8 images supported
+
+
 def stitch_image_own():
     """
     Stitches images saved in own_results/ (kept from your original function) 
@@ -226,20 +239,53 @@ def stitch_image_own():
     images = [Image.open(x[0]) for x in sortedByTimeStampImages]
     if not images:
         return Image.new('RGB', (1, 1))
+    
+    # Use the most recent up to 8 images (still works if fewer than 4 exist)
+    take = min(8, len(sortedByTimeStampImages))
+    selectedPairs = sortedByTimeStampImages[-take:]
 
-    width, height = zip(*(i.size for i in images))
-    total_width = sum(width)
-    max_height = max(height)
-    stitchedImg = Image.new('RGB', (total_width, max_height))
-    x_offset = 0
+    # Open as RGB
+    images = [Image.open(p).convert('RGB') for p, _ in selectedPairs]
+    n = len(images)
+    rows, cols = auto_grid(n)
+    pad = 10
 
-    for im in images:
-        stitchedImg.paste(im, (x_offset, 0))
-        x_offset += im.size[0]
+    # Compute max height per row and max width per column (no scaling)
+    row_heights = [0] * rows
+    col_widths = [0] * cols
+    for idx, im in enumerate(images):
+        r = idx // cols
+        c = idx % cols
+        if r >= rows: break
+        w, h = im.size
+        if h > row_heights[r]: row_heights[r] = h
+        if w > col_widths[c]: col_widths[c] = w
+
+    # Canvas size (sum of row/col sizes + padding gutters)
+    total_width  = sum(col_widths) + pad * (cols + 1)
+    total_height = sum(row_heights) + pad * (rows + 1)
+    stitchedImg = Image.new('RGB', (total_width, total_height))
+
+    # Precompute top-left origins for each cell
+    x_origins = [pad]
+    for c in range(1, cols):
+        x_origins.append(x_origins[-1] + col_widths[c-1] + pad)
+    y_origins = [pad]
+    for r in range(1, rows):
+        y_origins.append(y_origins[-1] + row_heights[r-1] + pad)
+
+    # Paste each image centered in its cell (no resize)
+    for idx, im in enumerate(images):
+        r = idx // cols
+        c = idx % cols
+        if r >= rows: break
+        w, h = im.size
+        x0 = x_origins[c] + (col_widths[c] - w) // 2
+        y0 = y_origins[r] + (row_heights[r] - h) // 2
+        stitchedImg.paste(im, (x0, y0))
+
     stitchedImg.save(stitchedPath)
-
     return stitchedImg
-
 
 
 

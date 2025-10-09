@@ -11,10 +11,12 @@ import com.example.mdp_android.ui.grid.Map;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-
+import com.example.mdp_android.MyApp;
+import android.content.Context;
 public class RpiController {
     private static final String TAG = "RPI messages";
-    private static BluetoothController bController = BluetoothControllerSingleton.getInstance(new Handler());
+    //private static BluetoothController bController = BluetoothControllerSingleton.getInstance(new Handler());
+    private static volatile BluetoothController bController;
 
     /**
      * read messages received from rpi and pass it to JSON object
@@ -35,7 +37,7 @@ public class RpiController {
 
     public static JSONObject readRpiMessages(String received) {
         try {
-            Log.e(TAG, "Received object is: " + received);
+            Log.d(TAG, "Received object is: " + received);
             JSONObject jsonObj = new JSONObject(received);
             if (jsonObj.get("type").equals("COORDINATES")) {
                 // get current coordinates of robot from rpi
@@ -59,7 +61,7 @@ public class RpiController {
 
     public static JSONObject readSecondJSONMessages(String received) {
         try {
-            Log.e(TAG, "Received object is: " + received);
+            Log.d(TAG, "Received object is: " + received);
             JSONObject jsonObj = new JSONObject(received);
             if(jsonObj.get("type").equals("PATH")) {
                 // get list of coordinates from rpi
@@ -189,10 +191,26 @@ public class RpiController {
         return message;
     }
 
+    /*
     // function to send messages to rpi
     public static void sendToRpi(JSONObject jsonObj) {
         try {
             bController.write(jsonObj.toString().getBytes(StandardCharsets.UTF_8));
+            Log.d(TAG, "sendToRPi: \n" + jsonObj.toString(2));
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to send message to rpi: ", e);
+        }
+    }
+    */
+    private static BluetoothController getBtController() {
+        // MyApp.get() == your custom Application singleton (create one if you don't have it)
+        Context app = MyApp.get(); // returns applicationContext
+        return bController = BluetoothControllerSingleton.getInstance(app, /*handler*/ null);
+    }
+
+    public static void sendToRpi(JSONObject jsonObj) {
+        try {
+            getBtController().write(jsonObj.toString().getBytes(StandardCharsets.UTF_8));
             Log.d(TAG, "sendToRPi: \n" + jsonObj.toString(2));
         } catch (Exception e) {
             Log.e(TAG, "Failed to send message to rpi: ", e);

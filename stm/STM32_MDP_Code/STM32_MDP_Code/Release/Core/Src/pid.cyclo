@@ -1,5 +1,0 @@
-../Core/Src/pid.cpp:53:6:void PID_init(pid_type_def*, uint8_t, const float*, float, float)	3
-../Core/Src/pid.cpp:69:6:void PID_init_oldmethod(pid_type_def*, uint8_t, const float*, float, float, float, float)	3
-../Core/Src/pid.cpp:101:7:float PID_calc(pid_type_def*, float, float)	10
-../Core/Src/pid.cpp:139:7:float PID_calc_oldmethod(pid_type_def*, float, float)	14
-../Core/Src/pid.cpp:180:6:void PID_clear(pid_type_def*)	2

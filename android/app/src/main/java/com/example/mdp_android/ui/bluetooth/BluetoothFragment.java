@@ -62,7 +62,8 @@ public class BluetoothFragment extends Fragment {
     private ProgressBar progressAvail;
     private TextView bluetoothTextView;
     private BluetoothAdapter bAdapter;
-    public BluetoothController bController = BluetoothControllerSingleton.getInstance(null);
+    //public BluetoothController bController = BluetoothControllerSingleton.getInstance(null);
+    private BluetoothController bController; // just a field
     private LottieAnimationView lottieScan;
     private boolean isScanning = false;
     private boolean receiversRegistered = false;
@@ -70,6 +71,13 @@ public class BluetoothFragment extends Fragment {
     // bluetooth indicators
     private String connectedDevice = "";
     DeviceSingleton deviceSingleton;
+
+    @Override
+    public void onAttach(@NonNull Context ctx) {
+        super.onAttach(ctx);
+        Context app = ctx.getApplicationContext();
+        bController = BluetoothControllerSingleton.getInstance(app, mHandler);
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
