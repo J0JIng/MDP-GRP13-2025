@@ -163,27 +163,32 @@ class STMLink(Link):
                 if robot is not None:
                     #  get yaw
                     prev_yaw = robot.get_yaw()
+                    isFwd = None 
 
                     if token == "FR00":
                         success = bool(robot.turn_right(90, True))
+                        isFwd = True 
                         self.cur_offset -= 90
                         if self.cur_offset < -180:
                             self.cur_offset %= 180
 
                     elif token == "FL00":
                         success = bool(robot.turn_left(90, True))
+                        isFwd = True
                         self.cur_offset += 90
                         if self.cur_offset > 180:
                             self.cur_offset = -180 + (self.cur_offset % 180)
 
                     elif token == "BR00":
                         success = bool(robot.turn_right(90, False))
+                        isFwd = False
                         self.cur_offset -= 90
                         if self.cur_offset < -180:
                             self.cur_offset %= 180
                     
                     elif token == "BL00":
                         success = bool(robot.turn_left(90, False))
+                        isFwd = False
                         self.cur_offset += 90
                         if self.cur_offset > 180:
                             self.cur_offset = -180 + (self.cur_offset % 180)
@@ -193,9 +198,17 @@ class STMLink(Link):
                     # run compensation algo
                     new_offset, dir = self.turn_error_minimization(prev_yaw, True, cur_yaw, self.cur_offset)
                     if (dir) :
-                        robot.turn_left(int(new_offset), True) 
+                        if (isFwd):
+                            robot.turn_left(int(new_offset), True)     
+                        else:
+                            robot.turn_left(int(new_offset), False) 
+
                     else:
-                        robot.turn_right(int(new_offset), True)
+                        if (isFwd):
+                            robot.turn_right(int(new_offset), True)     
+                        else:
+                            robot.turn_right(int(new_offset), False) 
+                        
                     
                     performed_action = True
 
