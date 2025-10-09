@@ -71,7 +71,7 @@ class AndroidMessage:
     @classmethod
     def image_results(cls, obs_id, img_id) -> "AndroidMessage":
         """Create an IMAGE_RESULTS message with keys 'obs_id' and 'img_id'."""
-        if img_id == 'NA' or img_id == '10':  # img is recognized as NA or Bullseye
+        if img_id == 'NA':  # img is recognized as NA
             img_id = '0'
         payload = {"obs_id": obs_id, "img_id": img_id}
         return cls("IMAGE_RESULTS", payload)
