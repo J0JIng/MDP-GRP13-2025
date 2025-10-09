@@ -2,6 +2,9 @@ from typing import Optional
 from config.load_config import load_stm32_config
 from link.base import Link
 from stm.robot_controller import RobotController
+import math
+import time
+
 
 
 class STMLink(Link):
@@ -57,6 +60,7 @@ class STMLink(Link):
         self.robot: Optional[RobotController] = None
         self._last_ack: Optional[bool] = None
         self._ack_queue = None
+        self.cur_offset = 0
 
     def set_ack_queue(self, ack_queue) -> None:
         """Bind a multiprocessing-aware queue to publish acknowledgement results."""
@@ -157,15 +161,44 @@ class STMLink(Link):
             elif token in {"FR00", "FL00", "BR00", "BL00"}:
                 robot = _ensure_robot()
                 if robot is not None:
+                    #  get yaw
+                    prev_yaw = robot.get_yaw()
+
                     if token == "FR00":
                         success = bool(robot.turn_right(90, True))
+                        self.cur_offset -= 90
+                        if self.cur_offset < -180:
+                            self.cur_offset %= 180
+
                     elif token == "FL00":
                         success = bool(robot.turn_left(90, True))
+                        self.cur_offset += 90
+                        if self.cur_offset > 180:
+                            self.cur_offset = -180 + (self.cur_offset % 180)
+
                     elif token == "BR00":
                         success = bool(robot.turn_right(90, False))
+                        self.cur_offset -= 90
+                        if self.cur_offset < -180:
+                            self.cur_offset %= 180
+                    
                     elif token == "BL00":
                         success = bool(robot.turn_left(90, False))
+                        self.cur_offset += 90
+                        if self.cur_offset > 180:
+                            self.cur_offset = -180 + (self.cur_offset % 180)
+                    
+                    #  get yaw
+                    cur_yaw = robot.get_yaw()
+                    # run compensation algo
+                    new_offset, dir = self.turn_error_minimization(prev_yaw, True, cur_yaw, self.cur_offset)
+                    if (dir) :
+                        robot.turn_left(int(new_offset), True) 
+                    else:
+                        robot.turn_right(int(new_offset), True)
+                    
                     performed_action = True
+
 
             # Linear movement with numeric distance: FWnn / BWnn
             elif token.startswith("FW") and token[2:].isdigit():
@@ -276,3 +309,43 @@ class STMLink(Link):
         self._last_ack = None
         self.logger.info("Returning synthetic STM32 ack: %s", msg)
         return msg
+
+
+    def turn_error_minimization(self, phi: float, offset_known: bool, phi_cur: float, sgn_offset: float = 0):
+        if offset_known:
+
+            if (phi + sgn_offset) >= 180:
+                phi_opt = -180 + ((phi + sgn_offset) % 180)
+            elif (phi + sgn_offset) < -180:
+                phi_opt = ((phi + sgn_offset)) % 180
+            else:
+                phi_opt = (phi + sgn_offset)
+
+            epsl = phi_opt - phi_cur
+            if abs(epsl) <= 180:
+                return abs(epsl), 1 if epsl > 0 else 0
+            else:
+                return 360 - epsl, 1 if epsl <= 0 else 0
+
+        else:
+            epsl_vars = []
+            # basically repeat the above for all k in -2..2
+            _CONST_ROT_MAG = 90
+            for k in (-2, 3):
+                if (phi + _CONST_ROT_MAG * k) >= 180:
+                    phi_opt = -180 + ((phi + _CONST_ROT_MAG * k) % 180)
+                elif (phi + _CONST_ROT_MAG * k) < -180:
+                    phi_opt = (phi + _CONST_ROT_MAG * k) % 180
+                else:
+                    phi_opt = (phi + _CONST_ROT_MAG * k)
+
+                epsl = phi_opt - phi_cur
+                if abs(epsl) <= 180:
+                    epsl_vars.append([abs(epsl), 1 if epsl > 0 else 0])
+                else:
+                    epsl_vars.append([360 - epsl, 1 if epsl <= 0 else 0])
+            n = 0
+            for k, _ in enumerate(epsl_vars):
+                if epsl_vars[k][0] < epsl_vars[n][0]:
+                    n = k
+            return epsl_vars[n]
