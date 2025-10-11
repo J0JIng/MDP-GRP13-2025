@@ -1,7 +1,6 @@
 from enum import Enum
 from typing import Optional, Callable
 import asyncio
-import math
 import time
 from gpiozero import DistanceSensor
 from time import sleep
@@ -281,40 +280,59 @@ class RobotController:
 
         self.validate_dist(dist)
 
-        sensor = getattr(self, "distance_sensor", None)
-        if sensor is None:
-            return False
-
-        try:
-            initial_distance = float(sensor.distance * 100)
-        except Exception:
+        initial_distance = self.poll_obstruction(read_once=True)
+        if initial_distance is None:
             return False
 
         if initial_distance >= dist:
             return True
 
-        self.set_reset_sensor_values()
+        attempts = 3 if retry else 1
 
-        while True:
-            try:
-                current_distance = float(sensor.distance * 100)
-            except Exception:
-                return False
+        for attempt in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.MOTOR)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.BWD_CHAR)
+            self.drv.add_args_bytes(999)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.CRAWL_CHAR)
+            self.drv.pad_to_end()
 
-            if current_distance >= dist:
+            ack = self.drv.ll_is_valid(self.drv.send_cmd())
+            if not ack:
+                self._sleep_cmd_retry(attempt, attempts)
+                continue
+
+            time.sleep(self.MOVE_INITIAL_DELAY_S)
+
+            detection = False
+            start_time = time.monotonic()
+
+            while (time.monotonic() - start_time) <= self.MOVE_COMPLETION_TIMEOUT_S:
+                current_distance = self.poll_obstruction(read_once=True)
+                if current_distance is None:
+                    detection = None
+                    break
+
+                if current_distance >= dist:
+                    detection = True
+                    break
+
+                time.sleep(self.MOVE_POLL_INTERVAL_S)
+
+            halted = self.halt(retry=False)
+            if not halted:
+                detection = False if detection is not None else None
+
+            if detection:
                 return True
 
-            remaining = dist - current_distance
-            if remaining <= 0:
-                return True
-
-            segment = min(self.CRAWL_CHUNK_SIZE_CM, max(1, math.ceil(remaining)))
-            if not self._send_crawl_distance(segment, self.drv.MotorCmd.BWD_CHAR, retry):
+            if detection is None:
                 return False
 
-            time.sleep(self.CRAWL_CHUNK_DELAY_S)
+            self._sleep_cmd_retry(attempt, attempts)
 
-            return self._send_crawl_distance(dist, self.drv.MotorCmd.BWD_CHAR, retry)
+        return False
 
     def _send_crawl_distance(self, dist: int, motor_cmd: SerialCmdBaseLL.MotorCmd, retry: bool) -> bool:
         attempts = 3 if retry else 1
@@ -700,11 +718,18 @@ class RobotController:
             return None
         return ret
 
-    def poll_obstruction(self, dist_from_obstacle: float = 30.0):
-        dist_from_obstacle += 5.0
+    def poll_obstruction(self, dist_from_obstacle: float = 30.0, read_once: bool = False):
         sensor = getattr(self, "distance_sensor", None)
         if sensor is None:
             return None
+
+        if read_once:
+            try:
+                return float(sensor.distance * 100)
+            except Exception:
+                return None
+
+        dist_from_obstacle += 5.0
 
         try:
             while True:
