@@ -725,16 +725,23 @@ class RobotController:
 
         if read_once:
             try:
-                return float(sensor.distance * 100)
+                measurement = sensor.distance
             except Exception:
                 return None
+            if measurement is None:
+                return None
+            return float(measurement * 100)
 
         # dist_from_obstacle += 5.0
 
         try:
             while True:
                 # sensor.distance is in meters (float 0.0–1.0+)
-                distance_cm = float(sensor.distance * 100)
+                measurement = sensor.distance
+                if measurement is None:
+                    sleep(0.1)
+                    continue
+                distance_cm = float(measurement * 100)
                 print(f"{distance_cm:.1f} cm")
                 if distance_cm <= dist_from_obstacle:
                     return True
