@@ -211,7 +211,7 @@ class RobotController:
 
         return self._send_crawl_distance(dist, self.drv.MotorCmd.FWD_CHAR, retry)
 
-    def crawl_forward_until_obstacle(self, retry: bool = True, dist=30) -> bool:
+    def crawl_forward_until_obstacle(self, dist=30, retry: bool = True) -> bool:
         '''
         Command robot to crawl FORWARD until an obstacle is detected.
         returns True if command was acknowledged and obstacle detected, False otherwise.
@@ -272,7 +272,7 @@ class RobotController:
 
         return self._send_crawl_distance(dist, self.drv.MotorCmd.BWD_CHAR, retry)
 
-    def crawl_backward_from_obstacle(self, retry: bool = True, dist: int = 30) -> bool:
+    def crawl_backward_from_obstacle(self, dist: int = 30, retry: bool = True) -> bool:
         '''
         Crawl backward until the robot is [dist] cm away from the obstacle in front.
         Does not move if the current distance already exceeds [dist].
