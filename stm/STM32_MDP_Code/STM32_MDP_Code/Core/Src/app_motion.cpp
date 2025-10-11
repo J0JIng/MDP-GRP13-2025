@@ -131,19 +131,27 @@ namespace AppMotion {
 //			osDelay(1000);
 
 			// Move straight 100 m
-//			self->move(false, 100, 35, false, false);
+//			self->move(false, 30, 35, false, false);
 
 			// Turn right
 //			self->move(true, 10, 35, false, false);
 //			self->turn(true, true, false, 90);
-//			self->turn(true, false, false, 90);
+//			osDelay(1000);
+			//self->turn(true, false, false, 90);
 //			self->move(true, 10, 35, false, false);
 
 			// Turn left
 //			self->move(true, 10, 35, false, false);
 //			self->turn(false, true, false, 90); // fwd left
-//		    self->turn(false, false, false, 90);
+//			osDelay(1000);
+//		    self->turn(false, false, false, 20);
 //			self->move(true, 10, 35, false, false);
+//			self->move(true, 10, 35, false, false);
+//			self->turn(true, true, false, 90);
+//			self->moveAndTurnAfterObstacle(false, true, false, 90);
+//			self->move(false, 10, 35, false, false);
+//			self->turn(false, true, false, 90);
+//			self->moveAndTurnAfterObstacle(false, true, false, 90);
 
 			//while(1){} // uncomment this code if you are using any of the test code above.
 
@@ -174,6 +182,12 @@ namespace AppMotion {
 
 				} else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_RIGHT_BWD){
 					self->turn(true, false, pkt.linear, pkt.arg);
+				}
+				 else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_FWD_UNTIL_LEFT_OBS){
+					self->moveAndTurnAfterObstacle(false, true, pkt.linear, pkt.arg);
+				}
+				 else if (pkt.cmd == AppParser::MOTION_CMD::MOVE_FWD_UNTIL_RIGHT_OBS){
+					self->moveAndTurnAfterObstacle(true , true, pkt.linear, pkt.arg);
 				}
 			}
 		}
@@ -214,6 +228,7 @@ namespace AppMotion {
 			rmotor->setSpeed(35, isFwd);
 		}
 
+		uint32_t dist_travelled = 0;
 		uint32_t l_encoder_count = lencoder->getCount();
 		uint32_t r_encoder_count = rencoder->getCount();
 		double target = (double) arg / DISTANCE_PER_ENCODER_PULSE;
@@ -273,6 +288,8 @@ namespace AppMotion {
 
 			l_encoder_count = lencoder->getCount();
 			r_encoder_count = rencoder->getCount();
+			dist_travelled = (uint32_t) (cur_left>cur_right?cur_right:cur_left) * DISTANCE_PER_ENCODER_PULSE;
+			sensor_data.last_halt_val = dist_travelled;
 
 			if ((cur_left > target && cur_right > target) || emergency)
 			{
@@ -305,8 +322,141 @@ namespace AppMotion {
 	void MotionController::turn(bool isRight, bool isFwd, bool arc, uint32_t arg) {
 		sensor_data.is_moving = true;
 		emergency = false;
-		isRight ? servo->turnRight() : servo->turnLeft();
 
+		// LAST MINUTE CHANGE
+//		if (!isRight && !isFwd ){
+//			MotionController::move(false, 5, 100,true, false);
+//		    sensor_data.is_moving = true;
+//		}
+//
+//		if (isRight && !isFwd ){
+//			MotionController::move(false, 5, 100,true, false);
+//		    sensor_data.is_moving = true;
+//		}
+
+		isRight ? servo->turnRight() : servo->turnLeft();
+		isRight ? lmotor->setSpeed(51, isFwd) : lmotor->setSpeed(20, isFwd);
+		isRight ? rmotor->setSpeed(20, isFwd) : rmotor->setSpeed(51, isFwd);
+
+		if(arc) // arc increases turn radius
+		{
+			isRight ? lmotor->setSpeed(55, isFwd) : lmotor->setSpeed(20, isFwd);
+			isRight ? rmotor->setSpeed(20, isFwd) : rmotor->setSpeed(55, isFwd);
+		}
+		uint32_t timeNow = HAL_GetTick();
+		uint32_t timeStart = timeNow;
+		uint8_t buf[30] = { 0 };
+		float target_yaw = 0;
+		float req = ((float) arg) ;
+		float cur = sensor_data.yaw_abs; //[-179,180]
+		float prev_yaw = cur;
+		float last_target_dist = 99999.0f; // overshoot protection
+		float bwd_diffn_delta = 0;
+
+		if((!isRight && isFwd) || (isRight && !isFwd) ) //increase
+		{
+			if((req + cur) > 179) target_yaw = -180 + (req - (180 - cur));
+			else target_yaw = req + cur;
+		}
+		else
+		{
+			if((cur - req) < -179) target_yaw = 180 - (req + (-180 - cur));
+			else target_yaw = cur - req;
+		}
+
+		do{
+			if (abs(target_yaw - cur) < 45 ) {
+				if(isRight) lmotor->setSpeed((uint32_t)map(abs(target_yaw - cur), 45, 0, 30, 15), isFwd);
+
+				else rmotor->setSpeed((uint32_t)map(abs(target_yaw - cur), 45, 0, 30, 15), isFwd);
+			}
+			else if(fmod(abs(abs(target_yaw) - abs(cur)), 180) < 45 )
+			{
+				if(isRight) lmotor->setSpeed((uint32_t)map(fmod(abs(abs(target_yaw) - abs(cur)), 180), 45, 0, 30, 15), isFwd);
+
+				else rmotor->setSpeed((uint32_t)map(fmod(abs(abs(target_yaw) - abs(cur)), 180), 45, 0, 30, 15), isFwd);
+			}
+
+			timeNow = HAL_GetTick();
+			/* Use backward differentiation algorithm here to estimate the current yaw based on time
+			 * elapsed since last sample.
+			 * Attempting to increase the gyro sample rate is worse because the drift errors pile up.
+			 * Since we dont want to measure changes in sgn(cur - prev yaw) anyway, this method seems fine.
+			 *
+			 * abs(sensor_data.yaw_abs - sensor_data.yaw_abs_prev) is STEP SIZE
+			 * 50 is TIME PER STEP
+			 * sgn(sensor_data.yaw_abs - sensor_data.yaw_abs_prev) is DIRECTION
+			 *
+			 * */
+			if(timeNow != sensor_data.yaw_abs_time)
+				bwd_diffn_delta = abs(sensor_data.yaw_abs - sensor_data.yaw_abs_prev) * (float)(abs(timeNow - sensor_data.yaw_abs_time)/80);
+			else
+				bwd_diffn_delta = 0;
+			cur = sensor_data.yaw_abs +  (bwd_diffn_delta * sgn(sensor_data.yaw_abs - sensor_data.yaw_abs_prev)); // already dlpf and qtn filtered
+			sensor_data.yaw_cur_dbg = cur;
+			prev_yaw = cur;
+			//break off immediately if overshoot
+			if (last_target_dist < abs(target_yaw - cur) && abs(target_yaw - cur) < 15) {
+				lmotor->halt();
+				rmotor->halt();
+				break;
+			}
+			else last_target_dist = abs(target_yaw - cur);
+
+			if (abs(target_yaw - cur) <= 0.375 || (abs(target_yaw - cur) <= 1.5 && arc) || (HAL_GetTick() - timeStart) > 10000)
+			{
+				sensor_data.last_halt_val = ((uint32_t)abs(target_yaw - cur)) %180;
+				lmotor->halt();
+				rmotor->halt();
+				break;
+			}
+
+			sensor_data.last_halt_val = arg;
+			osDelay(2);
+			osThreadYield(); // need to ensure yield for the sensortask
+
+		} while (1);
+
+
+		// LAST MINUTE CHANGE
+//		if (!isRight && isFwd){
+//			MotionController::move(true, 5, 100, true, false);
+// 		    sensor_data.is_moving = true;
+//		}
+//
+//		if (isRight && isFwd){
+//			MotionController::move(true, 5, 100, true, false);
+// 		    sensor_data.is_moving = true;
+//		}
+
+		emergency = false;
+		lmotor->halt();
+		rmotor->halt();
+		sensor_data.is_moving = false;
+	}
+
+	void MotionController::moveAndTurnAfterObstacle(bool isRight, bool isFwd, bool arc, uint32_t arg) {
+		sensor_data.is_moving = true;
+		emergency = false;
+
+		// MOVE LOGIC
+		do{
+			servo->turnFront();
+			lmotor->setSpeed(35, isFwd);
+			rmotor->setSpeed(35, isFwd);
+
+			// check isObstacle is to the right
+			if (isRight && sensor_data.ir_distR > 15.0f){
+				break;
+			}
+			// check isObstacle is to the left
+			else if (!isRight && sensor_data.ir_distL > 15.0f){
+				break;
+			}
+		} while(1);
+
+		// TURN LOGIC
+		isRight ? servo->turnRight() : servo->turnLeft();
 		isRight ? lmotor->setSpeed(51, isFwd) : lmotor->setSpeed(20, isFwd);
 		isRight ? rmotor->setSpeed(20, isFwd) : rmotor->setSpeed(51, isFwd);
 

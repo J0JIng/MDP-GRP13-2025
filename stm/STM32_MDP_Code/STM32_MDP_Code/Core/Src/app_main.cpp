@@ -140,7 +140,7 @@ void initializeCPPconstructs(void) {
 
 }
 
-#define BUFFER_SIZE 4  // Buffer size for 10 samples
+#define BUFFER_SIZE 10  // Buffer size for 10 samples
 
 float irBufferL[BUFFER_SIZE]; // Buffer for left IR sensor
 float irBufferR[BUFFER_SIZE]; // Buffer for right IR sensor
@@ -189,8 +189,19 @@ void sensorIRTask(void *pv) {
         float d2 = (v2 > 0.1f) ? (13.0f / v2 - 0.42f) : -1.0f;
 
         // Clamp to a reasonable range (10–80 cm) to avoid spikes
-        if (d1 > 80.0f) d1 = 80.0f; if (d1 > 0 && d1 < 10.0f) d1 = 10.0f;
-        if (d2 > 80.0f) d2 = 80.0f; if (d2 > 0 && d2 < 10.0f) d2 = 10.0f;
+        if (d1 > 50.0f || d1 < 0.0f) {
+        	d1 = 50.0f;
+        }
+        if (d1 > 0.0f && d1 < 10.0f) {
+			d1 = 10.0f;
+		}
+
+        if (d2 > 50.0f || d2 < 0.0f) {
+        	d2 = 50.0f;
+        }
+        if (d2 > 0.0f && d2 < 10.0f) {
+			d2 = 10.0f;
+		}
 
         // Optional moving average using your ring buffer
         irBufferL[bufferIndex] = d1;
@@ -198,7 +209,11 @@ void sensorIRTask(void *pv) {
         bufferIndex = (bufferIndex + 1) % BUFFER_SIZE;
 
         float sumL = 0, sumR = 0;
-        for (int i = 0; i < BUFFER_SIZE; ++i) { sumL += irBufferL[i]; sumR += irBufferR[i]; }
+        for (int i = 0; i < BUFFER_SIZE; ++i) {
+        	sumL += irBufferL[i];
+        	sumR += irBufferR[i];
+        }
+
         ir_distL_Avg = sumL / BUFFER_SIZE;
         ir_distR_Avg = sumR / BUFFER_SIZE;
 

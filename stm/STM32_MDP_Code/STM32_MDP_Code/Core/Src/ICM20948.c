@@ -185,7 +185,7 @@ HAL_StatusTypeDef Gyro_calibrate(ICM20948 *dev) // calibrate the offset of the g
 	int8_t i;
 	int16_t temp;
 
-	for (i = 0; i < 32; i++) {
+	for (i = 0; i < 64; i++) {
 		IMU_ReadOneByte(dev, REG_ADD_GYRO_XOUT_L, &u8Buf[0]);
 		IMU_ReadOneByte(dev, REG_ADD_GYRO_XOUT_H, &u8Buf[1]);
 		temp = (u8Buf[1] << 8) | u8Buf[0]; // for debugging
@@ -200,12 +200,12 @@ HAL_StatusTypeDef Gyro_calibrate(ICM20948 *dev) // calibrate the offset of the g
 		ret = IMU_ReadOneByte(dev, REG_ADD_GYRO_ZOUT_H, &u8Buf[1]);
 		gyroRaw[2] = ((u8Buf[1] << 8) | u8Buf[0]) + gyroRaw[2];
 
-		HAL_Delay(25);; // wait for 100msec
+		osDelay(25); // wait for 100msec
 	}
 
-	dev->gyro_bias[0] = (float)(gyroRaw[0] >> 5);  // average of 32 reads
-	dev->gyro_bias[1] = (float)(gyroRaw[1] >> 5);
-	dev->gyro_bias[2] = (float)(gyroRaw[2] >> 5);
+	dev->gyro_bias[0] = (float)(gyroRaw[0] >> 6);  // average of 32 reads
+	dev->gyro_bias[1] = (float)(gyroRaw[1] >> 6);
+	dev->gyro_bias[2] = (float)(gyroRaw[2] >> 6);
 
 
 	return ret;

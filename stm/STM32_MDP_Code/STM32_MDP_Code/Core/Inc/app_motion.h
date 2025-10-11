@@ -82,7 +82,7 @@ namespace AppMotion {
 
 		// Edit the following to control the servo's direction.
 
-		#define CENTER_POS_PWM 757   //  756.9 //22 45
+		#define CENTER_POS_PWM 756   //  756.9 //22 45
 		#define LEFT_DELTA 11         // was 10
 		#define RIGHT_DELTA 15        // was 10 then 15 20
 		#define LEFT_POS_PWM (CENTER_POS_PWM - LEFT_DELTA)
@@ -102,6 +102,7 @@ namespace AppMotion {
 					uint32_t arg);
 			void moveConstantPWM(bool isFwd, uint32_t speed, uint32_t duration_ms);
 			void move(bool isFwd, uint32_t arg, uint32_t speed, bool isCrawl, bool nostop);
+			void moveAndTurnAfterObstacle(bool isRight, bool isFwd, bool nostop, uint32_t arg);
 			void emergencyStop();
 			void task2ScanAndRot(bool dir);
 			void task2ScanAndReturn(bool dir);

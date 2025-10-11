@@ -231,13 +231,16 @@ void Processor::processorTask(void *pv) {
 						osMessageQueuePut(tx_ctx->mailbox.queue, pkt, 0, 0);
 						HAL_UART_Transmit(&huart3, (BUF_CMP_t*) ack,
 								sizeof(ack), 10);
-					} else if (isEq(T2_90R_CHAR, msg.buffer[3])) {
+					}
+
+					else if (isEq(T2_90R_CHAR, msg.buffer[3])) {
 						MOTION_PKT_t *pkt = new MOTION_PKT_t();
 						pkt->turn_opt = isEq(LEFT_CHAR, msg.buffer[4]);
 						osMessageQueuePut(tx_ctx->mailbox.queue, pkt, 0, 0);
 						HAL_UART_Transmit(&huart3, (BUF_CMP_t*) ack,
 								sizeof(ack), 10);
 					}
+
 					else if (isEq(T2_O1_CHAR, msg.buffer[3])) {
 						MOTION_PKT_t *pkt = new MOTION_PKT_t();
 						pkt->turn_opt = isEq(LEFT_CHAR, msg.buffer[4]);
@@ -245,6 +248,7 @@ void Processor::processorTask(void *pv) {
 						HAL_UART_Transmit(&huart3, (BUF_CMP_t*) ack,
 								sizeof(ack), 10);
 					}
+
 				}
 				default: {
 					// something went wrong..
@@ -349,7 +353,14 @@ MOTION_PKT_t* Processor::getMotionCmdFromBytes(BUF_CMP_t *bytes) {
 		break;
 
 	}
+	case MOV_TIL_OBS: {
+		pkt->cmd =
+				(bool) (isEq<BUF_CMP_t>(LEFT_CHAR, bytes[7])) ?
+						MOVE_FWD_UNTIL_LEFT_OBS : MOVE_FWD_UNTIL_RIGHT_OBS;
+		pkt->linear =(bool) (isEq<BUF_CMP_t>(LINEAR_CHAR, bytes[8]));
+		break;
 
+	}
 	default:
 		// something went wrong..
 		return NULL;
