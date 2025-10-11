@@ -211,7 +211,7 @@ class RobotController:
 
         return self._send_crawl_distance(dist, self.drv.MotorCmd.FWD_CHAR, retry)
 
-    def crawl_forward_until_obstacle(self, retry: bool = True) -> bool:
+    def crawl_forward_until_obstacle(self, retry: bool = True, dist=30) -> bool:
         '''
         Command robot to crawl FORWARD until an obstacle is detected.
         returns True if command was acknowledged and obstacle detected, False otherwise.
@@ -236,7 +236,7 @@ class RobotController:
             time.sleep(self.MOVE_INITIAL_DELAY_S)
 
             try:
-                detection = self.poll_obstruction()
+                detection = self.poll_obstruction(dist)
             except Exception:
                 detection = None
 
@@ -594,7 +594,8 @@ class RobotController:
             return None
         return ret
 
-    def poll_obstruction(self, dist_from_obstacle: float = 55.0):
+    def poll_obstruction(self, dist_from_obstacle: float = 30.0):
+        dist_from_obstacle += 5.0
         sensor = getattr(self, "distance_sensor", None)
         if sensor is None:
             return None
