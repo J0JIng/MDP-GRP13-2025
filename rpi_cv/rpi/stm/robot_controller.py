@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Optional, Callable
 import asyncio
+import math
 import time
 from gpiozero import DistanceSensor
 from time import sleep
@@ -211,7 +212,7 @@ class RobotController:
 
         return self._send_crawl_distance(dist, self.drv.MotorCmd.FWD_CHAR, retry)
 
-    def crawl_forward_until_obstacle(self, retry: bool = True) -> bool:
+    def crawl_forward_until_obstacle(self, retry: bool = True, dist=30) -> bool:
         '''
         Command robot to crawl FORWARD until an obstacle is detected.
         returns True if command was acknowledged and obstacle detected, False otherwise.
@@ -236,7 +237,7 @@ class RobotController:
             time.sleep(self.MOVE_INITIAL_DELAY_S)
 
             try:
-                detection = self.poll_obstruction()
+                detection = self.poll_obstruction(dist)
             except Exception:
                 detection = None
 
@@ -271,6 +272,49 @@ class RobotController:
             return self._execute_chunked_crawl(dist, self.drv.MotorCmd.BWD_CHAR, retry)
 
         return self._send_crawl_distance(dist, self.drv.MotorCmd.BWD_CHAR, retry)
+
+    def crawl_backward_from_obstacle(self, retry: bool = True, dist: int = 30) -> bool:
+        '''
+        Crawl backward until the robot is [dist] cm away from the obstacle in front.
+        Does not move if the current distance already exceeds [dist].
+        '''
+
+        self.validate_dist(dist)
+
+        sensor = getattr(self, "distance_sensor", None)
+        if sensor is None:
+            return False
+
+        try:
+            initial_distance = float(sensor.distance * 100)
+        except Exception:
+            return False
+
+        if initial_distance >= dist:
+            return True
+
+        self.set_reset_sensor_values()
+
+        while True:
+            try:
+                current_distance = float(sensor.distance * 100)
+            except Exception:
+                return False
+
+            if current_distance >= dist:
+                return True
+
+            remaining = dist - current_distance
+            if remaining <= 0:
+                return True
+
+            segment = min(self.CRAWL_CHUNK_SIZE_CM, max(1, math.ceil(remaining)))
+            if not self._send_crawl_distance(segment, self.drv.MotorCmd.BWD_CHAR, retry):
+                return False
+
+            time.sleep(self.CRAWL_CHUNK_DELAY_S)
+
+            return self._send_crawl_distance(dist, self.drv.MotorCmd.BWD_CHAR, retry)
 
     def _send_crawl_distance(self, dist: int, motor_cmd: SerialCmdBaseLL.MotorCmd, retry: bool) -> bool:
         attempts = 3 if retry else 1
@@ -656,7 +700,8 @@ class RobotController:
             return None
         return ret
 
-    def poll_obstruction(self, dist_from_obstacle: float = 55.0):
+    def poll_obstruction(self, dist_from_obstacle: float = 30.0):
+        dist_from_obstacle += 5.0
         sensor = getattr(self, "distance_sensor", None)
         if sensor is None:
             return None
