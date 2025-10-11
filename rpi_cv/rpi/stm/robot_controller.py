@@ -309,7 +309,7 @@ class RobotController:
             start_time = time.monotonic()
 
             while (time.monotonic() - start_time) <= self.MOVE_COMPLETION_TIMEOUT_S:
-                current_distance = self.poll_obstruction(dist_from_obstacle=dist, read_once=True)
+                current_distance = self.poll_obstruction(dist_from_obstacle=dist)
                 if current_distance is None:
                     detection = None
                     break
@@ -729,7 +729,7 @@ class RobotController:
             except Exception:
                 return None
 
-        dist_from_obstacle += 5.0
+        # dist_from_obstacle += 5.0
 
         try:
             while True:
