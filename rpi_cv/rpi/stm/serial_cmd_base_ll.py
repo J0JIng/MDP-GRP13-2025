@@ -41,6 +41,7 @@ class SerialCmdBaseLL:
         T2_180_CHAR = b'!'
         T2_90_CHAR = b'?'
         T2_O1_CHAR = b'@'
+        MOV_TIL_OBS = b'p'
         PAD_CHAR = b'.'
 
     class SensorCmd(Enum):

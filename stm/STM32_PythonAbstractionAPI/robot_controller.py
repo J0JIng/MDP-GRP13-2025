@@ -36,21 +36,44 @@ class PinState(Enum):
 
 
 class RobotController:
-    PIN_US_TRIG: int = 23  # TODO DEFINE
-    PIN_US_ECHO: int = 24  # TODO DEFINE
-    STOPPING_DIST :float = 50.0 # 50 cm
-
+    PIN_US_TRIG: int = 15  # TODO DEFINE
+    PIN_US_ECHO: int = 14  # TODO DEFINE
     MOVE_COMPLETION_TIMEOUT_S: float = 60.0
     MOVE_START_TIMEOUT_S: float = 5.0
     MOVE_STOP_STABLE_WINDOW_S: float = 0.2
     MOVE_POLL_INTERVAL_S: float = 0.05
     MOVE_INITIAL_DELAY_S: float = 0.05
+    CMD_RETRY_BACKOFF_BASE_S: float = 0.1
+    CRAWL_CHUNK_SIZE_CM: int = 20
+    CRAWL_CHUNK_DELAY_S: float = 0.2
 
     def __init__(self, port: str, baudrate: int, _inst_obstr_cb: Optional[Callable[..., None]] = None):
         self.drv = SerialCmdBaseLL(port, baudrate)
-        
-        self.ultrasonic_Sensor = DistanceSensor(echo=self.PIN_US_ECHO, trigger=self.PIN_US_TRIG, max_distance=4.0)
-        self._inst_obstr_cb = _inst_obstr_cb 
+
+        self.distance_sensor = DistanceSensor(echo=24, trigger=23, max_distance=4.0)
+        # GPIO.setmode(GPIO.BCM)
+        # self.cmd_pin_state = PinState.Z
+        # self.obstr_pin_state = PinState.Z
+
+        # GPIO.setup(self.PIN_COMMAND, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        # GPIO.setup(self.PIN_OBSTACLE, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+        # if GPIO.input(self.PIN_COMMAND) == GPIO.HIGH:
+        #     print("[CONTROLLER] WARN: COMMAND PIN N/C OR UNEXPECTED STATE")
+        # else:
+        #     self.cmd_pin_state = PinState.LOW
+
+        # if GPIO.input(self.PIN_OBSTACLE) == GPIO.HIGH:
+        #     print("[CONTROLLER] WARN: OBSTACLE PIN N/C OR UNEXPECTED STATE")
+        # else:
+        #     self.obstr_pin_state = PinState.LOW
+
+        # self._inst_obstr_cb = _inst_obstr_cb
+        # if self._inst_obstr_cb is not None:
+        #     GPIO.add_event_detect(self.PIN_OBSTACLE,
+        #                           GPIO.RISING,
+        #                           callback=self.sig_obst_callback,
+        #                           bouncetime=50)
 
     def validate_dist(self, dist: int) -> None:
         '''
@@ -66,6 +89,47 @@ class RobotController:
         if angle < 0 or angle > 359:
             raise ValueError("Invalid angle, must be 0-359")
 
+    def move_forward_until_obstacle(self, no_brakes: bool = False, retry: bool = True) -> bool:
+        '''
+        Command robot to move FORWARD until obstacle detected.
+        returns True if command was acknowledged, False otherwise.
+        '''
+        attempts = 3 if retry else 1
+
+        for attempt in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.MOTOR)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.FWD_CHAR)
+            self.drv.add_args_bytes(999)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.PAD_CHAR)
+            if no_brakes:
+                self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LINEAR_CHAR)
+            self.drv.pad_to_end()
+
+            ack = self.drv.ll_is_valid(self.drv.send_cmd())
+            if not ack:
+                self._sleep_cmd_retry(attempt, attempts)
+                continue
+
+            time.sleep(self.MOVE_INITIAL_DELAY_S)
+
+            try:
+                detection = self.poll_obstruction()
+            except Exception:
+                detection = None
+
+            halted = self.halt(retry=False)
+            if not halted:
+                return False
+
+            if detection:
+                return True
+
+            self._sleep_cmd_retry(attempt, attempts)
+
+        return False
+
     def move_forward(self, dist: int, no_brakes: bool = False, retry: bool = True) -> bool:
         '''
         Command robot to move FORWARD backward by [dist] cm.
@@ -77,7 +141,7 @@ class RobotController:
         self.validate_dist(dist)
 
         attempts = 3 if retry else 1
-        for i in range(attempts):
+        for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -91,7 +155,9 @@ class RobotController:
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if ack:
                 return self._wait_for_motion_complete()
-        
+
+            self._sleep_cmd_retry(attempt, attempts)
+
         return False
 
     def move_backward(self, dist: int, no_brakes: bool = False, retry: bool = True) -> bool:
@@ -105,7 +171,7 @@ class RobotController:
         self.validate_dist(dist)
 
         attempts = 3 if retry else 1
-        for i in range(attempts):
+        for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -119,50 +185,125 @@ class RobotController:
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if ack:
                 return self._wait_for_motion_complete()
-        
+
+            self._sleep_cmd_retry(attempt, attempts)
+
         return False
 
-    def crawl_forward(self, dist: int) -> bool:
+    def crawl_forward(self, dist: int, retry: bool = True, chunk_large_moves: bool = True) -> bool:
         '''
         Command robot to move FORWARD by [dist] cm. IN A SLOW MANNER. 
         0 <= dist <= 999
         999 is interpreted as "move FORWARD until obstacle detected".
         returns True if command was acknowledged, False otherwise.
+
+        chunk_large_moves: when True and dist > 20cm, the movement is broken
+        into segments of up to 20cm with a small pause in between.
+        '''
+        self.set_reset_sensor_values()
+        self.validate_dist(dist)
+        if (
+            chunk_large_moves
+            and dist != 999
+            and dist > self.CRAWL_CHUNK_SIZE_CM
+        ):
+            return self._execute_chunked_crawl(dist, self.drv.MotorCmd.FWD_CHAR, retry)
+
+        return self._send_crawl_distance(dist, self.drv.MotorCmd.FWD_CHAR, retry)
+
+    def crawl_forward_until_obstacle(self, retry: bool = True) -> bool:
+        '''
+        Command robot to crawl FORWARD until an obstacle is detected.
+        returns True if command was acknowledged and obstacle detected, False otherwise.
         '''
 
-        self.validate_dist(dist)
-        self.drv.construct_cmd()
-        self.drv.add_cmd_byte(True)
-        self.drv.add_module_byte(self.drv.Modules.MOTOR)
-        self.drv.add_motor_cmd_byte(self.drv.MotorCmd.FWD_CHAR)
-        self.drv.add_args_bytes(dist)
-        self.drv.add_motor_cmd_byte(self.drv.MotorCmd.CRAWL_CHAR)
-        self.drv.pad_to_end()
-        ack = self.drv.ll_is_valid(self.drv.send_cmd())
-        if not ack:
-            return False
-        return self._wait_for_motion_complete()
+        attempts = 3 if retry else 1
 
-    def crawl_backward(self, dist: int) -> bool:
+        for attempt in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.MOTOR)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.FWD_CHAR)
+            self.drv.add_args_bytes(999)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.CRAWL_CHAR)
+            self.drv.pad_to_end()
+
+            ack = self.drv.ll_is_valid(self.drv.send_cmd())
+            if not ack:
+                self._sleep_cmd_retry(attempt, attempts)
+                continue
+
+            time.sleep(self.MOVE_INITIAL_DELAY_S)
+
+            try:
+                detection = self.poll_obstruction()
+            except Exception:
+                detection = None
+
+            halted = self.halt(retry=False)
+            if not halted:
+                return False
+
+            if detection:
+                return True
+
+            self._sleep_cmd_retry(attempt, attempts)
+
+        return False
+
+    def crawl_backward(self, dist: int, retry: bool = True, chunk_large_moves: bool = True) -> bool:
         '''
         Command robot to move BACKWARD by [dist] cm. IN A SLOW MANNER. 
         0 <= dist <= 999
         999 is interpreted as "move BACKWARD until obstacle detected".
         returns True if command was acknowledged, False otherwise.
-        '''
 
+        chunk_large_moves: when True and dist > 20cm, the movement is broken
+        into segments of up to 20cm with a small pause in between.
+        '''
+        self.set_reset_sensor_values()
         self.validate_dist(dist)
-        self.drv.construct_cmd()
-        self.drv.add_cmd_byte(True)
-        self.drv.add_module_byte(self.drv.Modules.MOTOR)
-        self.drv.add_motor_cmd_byte(self.drv.MotorCmd.BWD_CHAR)
-        self.drv.add_args_bytes(dist)
-        self.drv.add_motor_cmd_byte(self.drv.MotorCmd.CRAWL_CHAR)
-        self.drv.pad_to_end()
-        ack = self.drv.ll_is_valid(self.drv.send_cmd())
-        if not ack:
-            return False
-        return self._wait_for_motion_complete()
+        if (
+            chunk_large_moves
+            and dist != 999
+            and dist > self.CRAWL_CHUNK_SIZE_CM
+        ):
+            return self._execute_chunked_crawl(dist, self.drv.MotorCmd.BWD_CHAR, retry)
+
+        return self._send_crawl_distance(dist, self.drv.MotorCmd.BWD_CHAR, retry)
+
+    def _send_crawl_distance(self, dist: int, motor_cmd: SerialCmdBaseLL.MotorCmd, retry: bool) -> bool:
+        attempts = 3 if retry else 1
+
+        for attempt in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.MOTOR)
+            self.drv.add_motor_cmd_byte(motor_cmd)
+            self.drv.add_args_bytes(dist)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.CRAWL_CHAR)
+            self.drv.pad_to_end()
+            ack = self.drv.ll_is_valid(self.drv.send_cmd())
+            if ack:
+                return self._wait_for_motion_complete()
+
+            self._sleep_cmd_retry(attempt, attempts)
+
+        return False
+
+    def _execute_chunked_crawl(self, dist: int, motor_cmd: SerialCmdBaseLL.MotorCmd, retry: bool) -> bool:
+        remaining = dist
+
+        while remaining > 0:
+            segment = min(self.CRAWL_CHUNK_SIZE_CM, remaining)
+            if not self._send_crawl_distance(segment, motor_cmd, retry):
+                return False
+
+            remaining -= segment
+            if remaining > 0:
+                time.sleep(self.CRAWL_CHUNK_DELAY_S)
+
+        return True
 
     def turn_left(self, angle: int, dir: bool, no_brakes: bool = False, retry: bool = True) -> bool:
         '''
@@ -171,11 +312,11 @@ class RobotController:
         dir = True means turn forward, dir = False means turn backward.
         returns True if command was acknowledged, False otherwise.
         '''
-
+        self.set_reset_sensor_values()
         self.validate_angle(angle)
 
         attempts = 3 if retry else 1
-        for i in range(attempts):
+        for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -193,7 +334,9 @@ class RobotController:
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if ack:
                 return self._wait_for_motion_complete()
-        
+
+            self._sleep_cmd_retry(attempt, attempts)
+
         return False
 
     def turn_right(self, angle: int, dir: bool, no_brakes: bool = False, retry: bool = True) -> bool:
@@ -203,11 +346,11 @@ class RobotController:
         dir = True means turn forward, dir = False means turn backward.
         returns True if command was acknowledged, False otherwise.
         '''
-
+        self.set_reset_sensor_values()
         self.validate_angle(angle)
 
         attempts = 3 if retry else 1
-        for i in range(attempts):
+        for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -225,17 +368,81 @@ class RobotController:
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if ack:
                 return self._wait_for_motion_complete()
-        
+
+            self._sleep_cmd_retry(attempt, attempts)
+
+        return False
+    
+    def move_til_left_obs_turn(self, angle: int, dir: bool, no_brakes: bool = False, retry: bool = True) -> bool:
+        '''
+        Command robot to turn right by [angle] degrees and in the direction specified by [dir].
+        0 <= angle <= 359
+        dir = True means turn forward, dir = False means turn backward.
+        returns True if command was acknowledged, False otherwise.
+        '''
+        self.set_reset_sensor_values()
+        self.validate_angle(angle)
+
+        attempts = 3 if retry else 1
+        for attempt in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.MOTOR)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.MOV_TIL_OBS)
+            self.drv.add_args_bytes(angle)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LEFT_CHAR)
+    
+            if no_brakes:
+                self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LINEAR_CHAR)
+
+            self.drv.pad_to_end()
+            ack = self.drv.ll_is_valid(self.drv.send_cmd())
+            if ack:
+                return self._wait_for_motion_complete()
+
+            self._sleep_cmd_retry(attempt, attempts)
+
+        return False
+    
+    def move_til_right_obs_turn(self, angle: int, dir: bool, no_brakes: bool = False, retry: bool = True) -> bool:
+        '''
+        Command robot to turn right by [angle] degrees and in the direction specified by [dir].
+        0 <= angle <= 359
+        dir = True means turn forward, dir = False means turn backward.
+        returns True if command was acknowledged, False otherwise.
+        '''
+        self.set_reset_sensor_values()
+        self.validate_angle(angle)
+
+        attempts = 3 if retry else 1
+        for attempt in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.MOTOR)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.MOV_TIL_OBS)
+            self.drv.add_args_bytes(angle)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.RIGHT_CHAR)
+    
+            if no_brakes:
+                self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LINEAR_CHAR)
+
+            self.drv.pad_to_end()
+            ack = self.drv.ll_is_valid(self.drv.send_cmd())
+            if ack:
+                return self._wait_for_motion_complete()
+
+            self._sleep_cmd_retry(attempt, attempts)
+
         return False
 
-    def halt(self, retry: bool = True) :
+    def halt(self, retry: bool = True):
         '''
         Command robot to halt.
         returns True if command was acknowledged, False otherwise.
         '''
 
         attempts = 3 if retry else 1
-        for i in range(attempts):
+        for attempt in range(attempts):
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -244,8 +451,16 @@ class RobotController:
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if ack:
                 return self._wait_for_motion_complete()
-        
+
+            self._sleep_cmd_retry(attempt, attempts)
+
         return False
+
+    def _sleep_cmd_retry(self, attempt: int, attempts: int) -> None:
+        if attempt >= attempts - 1:
+            return
+        delay = self.CMD_RETRY_BACKOFF_BASE_S * (2 ** attempt)
+        time.sleep(delay)
 
     def _wait_for_motion_complete(self) -> bool:
         """
@@ -278,6 +493,7 @@ class RobotController:
 
             time.sleep(self.MOVE_POLL_INTERVAL_S)
 
+        self.set_reset_sensor_values()
         return False
 
     def get_quaternion(self) -> Optional[list]:
@@ -420,16 +636,6 @@ class RobotController:
         self.drv.pad_to_end()
         return self.drv.ll_is_valid(self.drv.send_cmd())
 
-    #  WARNING: Use this only during the init phase
-    def set_reset_sensor_values(self) -> bool:
-        self.drv.construct_cmd()
-        self.drv.add_cmd_byte(True)
-        self.drv.add_module_byte(self.drv.Modules.SENSOR)
-        self.drv.add_sensor_byte(self.drv.SensorCmd.RST_SEN_VAL)
-        self.drv.add_args_bytes(0)
-        self.drv.pad_to_end()
-        return self.drv.ll_is_valid(self.drv.send_cmd())
-
     async def sig_obst_callback(self, channel) -> None:
         self._inst_obstr_cb = channel
         if self._inst_obstr_cb is not None:
@@ -450,18 +656,22 @@ class RobotController:
             return None
         return ret
 
-    def poll_obstruction(self):
+    def poll_obstruction(self, dist_from_obstacle: float = 55.0):
+        sensor = getattr(self, "distance_sensor", None)
+        if sensor is None:
+            return None
+
         try:
             while True:
                 # sensor.distance is in meters (float 0.0–1.0+)
-                print(f"{self.ultrasonic_Sensor.distance * 100:.1f} cm")
-                distance = float(self.ultrasonic_Sensor.distance * 100)
-                if distance <= self.STOPPING_DIST:
+                distance_cm = float(sensor.distance * 100)
+                print(f"{distance_cm:.1f} cm")
+                if distance_cm <= dist_from_obstacle:
                     return True
                 sleep(0.1)
 
         except KeyboardInterrupt:
-            pass
+            return None
 
     def poll_is_moving(self):
         self.drv.construct_cmd()
@@ -475,3 +685,21 @@ class RobotController:
         except ValueError:
             return None
         return ret
+
+    def set_reset_sensor_values(self) -> bool:
+        attempts = 3
+
+        for attempt in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.SENSOR)
+            self.drv.add_sensor_byte(self.drv.SensorCmd.RST_SEN_VAL)
+            self.drv.add_args_bytes(0)
+            self.drv.pad_to_end()
+
+            if self.drv.ll_is_valid(self.drv.send_cmd()):
+                return True
+
+            self._sleep_cmd_retry(attempt, attempts)
+
+        return False

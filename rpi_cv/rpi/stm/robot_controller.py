@@ -372,6 +372,68 @@ class RobotController:
             self._sleep_cmd_retry(attempt, attempts)
 
         return False
+    
+    def move_til_left_obs_turn(self, angle: int, dir: bool, no_brakes: bool = False, retry: bool = True) -> bool:
+        '''
+        Command robot to turn right by [angle] degrees and in the direction specified by [dir].
+        0 <= angle <= 359
+        dir = True means turn forward, dir = False means turn backward.
+        returns True if command was acknowledged, False otherwise.
+        '''
+        self.set_reset_sensor_values()
+        self.validate_angle(angle)
+
+        attempts = 3 if retry else 1
+        for attempt in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.MOTOR)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.MOV_TIL_OBS)
+            self.drv.add_args_bytes(angle)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LEFT_CHAR)
+    
+            if no_brakes:
+                self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LINEAR_CHAR)
+
+            self.drv.pad_to_end()
+            ack = self.drv.ll_is_valid(self.drv.send_cmd())
+            if ack:
+                return self._wait_for_motion_complete()
+
+            self._sleep_cmd_retry(attempt, attempts)
+
+        return False
+    
+    def move_til_right_obs_turn(self, angle: int, dir: bool, no_brakes: bool = False, retry: bool = True) -> bool:
+        '''
+        Command robot to turn right by [angle] degrees and in the direction specified by [dir].
+        0 <= angle <= 359
+        dir = True means turn forward, dir = False means turn backward.
+        returns True if command was acknowledged, False otherwise.
+        '''
+        self.set_reset_sensor_values()
+        self.validate_angle(angle)
+
+        attempts = 3 if retry else 1
+        for attempt in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.MOTOR)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.MOV_TIL_OBS)
+            self.drv.add_args_bytes(angle)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.RIGHT_CHAR)
+    
+            if no_brakes:
+                self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LINEAR_CHAR)
+
+            self.drv.pad_to_end()
+            ack = self.drv.ll_is_valid(self.drv.send_cmd())
+            if ack:
+                return self._wait_for_motion_complete()
+
+            self._sleep_cmd_retry(attempt, attempts)
+
+        return False
 
     def halt(self, retry: bool = True):
         '''
