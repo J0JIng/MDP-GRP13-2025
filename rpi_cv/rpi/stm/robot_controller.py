@@ -305,24 +305,14 @@ class RobotController:
 
             time.sleep(self.MOVE_INITIAL_DELAY_S)
 
-            detection = False
-            start_time = time.monotonic()
-
-            while (time.monotonic() - start_time) <= self.MOVE_COMPLETION_TIMEOUT_S:
-                current_distance = self.poll_obstruction(dist_from_obstacle=dist)
-                if current_distance is None:
-                    detection = None
-                    break
-
-                if current_distance >= dist:
-                    detection = True
-                    break
-
-                time.sleep(self.MOVE_POLL_INTERVAL_S)
+            try:
+                detection = self._poll_until_distance_at_least(dist)
+            except Exception:
+                detection = None
 
             halted = self.halt(retry=False)
             if not halted:
-                detection = False if detection is not None else None
+                return False
 
             if detection:
                 return True
@@ -556,6 +546,22 @@ class RobotController:
             time.sleep(self.MOVE_POLL_INTERVAL_S)
 
         self.set_reset_sensor_values()
+        return False
+
+    def _poll_until_distance_at_least(self, dist: float) -> Optional[bool]:
+        start_time = time.monotonic()
+
+        while (time.monotonic() - start_time) <= self.MOVE_COMPLETION_TIMEOUT_S:
+            measurement = self.poll_obstruction(read_once=True)
+            if measurement is None:
+                time.sleep(self.MOVE_POLL_INTERVAL_S)
+                continue
+
+            if measurement >= dist:
+                return True
+
+            time.sleep(self.MOVE_POLL_INTERVAL_S)
+
         return False
 
     def get_quaternion(self) -> Optional[list]:
