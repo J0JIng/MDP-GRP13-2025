@@ -416,7 +416,7 @@ class RobotController:
             self._sleep_cmd_retry(attempt, attempts)
 
         return False
-    
+
     def move_til_left_obs_turn(self, angle: int, dir: bool, no_brakes: bool = False, retry: bool = True) -> bool:
         '''
         Command robot to turn right by [angle] degrees and in the direction specified by [dir].
@@ -435,7 +435,7 @@ class RobotController:
             self.drv.add_motor_cmd_byte(self.drv.MotorCmd.MOV_TIL_OBS)
             self.drv.add_args_bytes(angle)
             self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LEFT_CHAR)
-    
+
             if no_brakes:
                 self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LINEAR_CHAR)
 
@@ -447,7 +447,7 @@ class RobotController:
             self._sleep_cmd_retry(attempt, attempts)
 
         return False
-    
+
     def move_til_right_obs_turn(self, angle: int, dir: bool, no_brakes: bool = False, retry: bool = True) -> bool:
         '''
         Command robot to turn right by [angle] degrees and in the direction specified by [dir].
@@ -466,7 +466,7 @@ class RobotController:
             self.drv.add_motor_cmd_byte(self.drv.MotorCmd.MOV_TIL_OBS)
             self.drv.add_args_bytes(angle)
             self.drv.add_motor_cmd_byte(self.drv.MotorCmd.RIGHT_CHAR)
-    
+
             if no_brakes:
                 self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LINEAR_CHAR)
 
