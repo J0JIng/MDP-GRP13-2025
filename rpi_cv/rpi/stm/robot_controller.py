@@ -112,15 +112,7 @@ class UltrasonicSensor:
         self._pending: Optional[float] = None
         self._last_read_ts: float = 0.0
 
-    def _read_smoothed_distance_cm(self, force_read: bool = False) -> Optional[float]:
-        now = time.monotonic()
-        if (
-            not force_read
-            and self._last_ok is not None
-            and (now - self._last_read_ts) < self.PERIOD_S
-        ):
-            return min(self._last_ok, self.max_distance_cm)
-
+    def _read_raw_distance_cm(self) -> Optional[float]:
         try:
             with warnings.catch_warnings():
                 warnings.filterwarnings(
@@ -137,7 +129,27 @@ class UltrasonicSensor:
         if not math.isfinite(raw_cm):
             return None
 
-        raw_cm = max(0.0, min(raw_cm, self.max_distance_cm))
+        return max(0.0, min(raw_cm, self.max_distance_cm))
+
+    def _read_smoothed_distance_cm(self, force_read: bool = False) -> Optional[float]:
+        now = time.monotonic()
+        if force_read:
+            measurement_cm = self._read_raw_distance_cm()
+            if measurement_cm is None:
+                return None
+            self._last_read_ts = now
+            return measurement_cm
+
+        if (
+            self._last_ok is not None
+            and (now - self._last_read_ts) < self.PERIOD_S
+        ):
+            return min(self._last_ok, self.max_distance_cm)
+
+        raw_cm = self._read_raw_distance_cm()
+        if raw_cm is None:
+            return None
+
         self._window.append(raw_cm)
         if not self._window:
             return None
@@ -168,23 +180,7 @@ class UltrasonicSensor:
 
     def read_distance(self) -> Optional[float]:
         """Return the current distance measurement in cm, forcing a fresh sensor read."""
-        try:
-            with warnings.catch_warnings():
-                warnings.filterwarnings(
-                    "ignore",
-                    message=".*no echo received.*",
-                    category=UserWarning,
-                )
-                raw_cm = float(self.sensor.distance) * 100.0
-        except DistanceSensorNoEcho:
-            return None
-        except Exception:
-            return None
-
-        if not math.isfinite(raw_cm):
-            return None
-
-        measurement_cm = max(0.0, min(raw_cm, self.max_distance_cm))
+        measurement_cm = self._read_raw_distance_cm()
         if measurement_cm is None:
             return None
         return measurement_cm
