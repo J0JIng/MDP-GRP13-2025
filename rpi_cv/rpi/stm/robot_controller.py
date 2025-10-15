@@ -104,9 +104,13 @@ class UltrasonicSensor:
         self._pending: Optional[float] = None
         self._last_read_ts: float = 0.0
 
-    def _read_smoothed_distance_cm(self) -> Optional[float]:
+    def _read_smoothed_distance_cm(self, force_read: bool = False) -> Optional[float]:
         now = time.monotonic()
-        if self._last_ok is not None and (now - self._last_read_ts) < self.PERIOD_S:
+        if (
+            not force_read
+            and self._last_ok is not None
+            and (now - self._last_read_ts) < self.PERIOD_S
+        ):
             return min(self._last_ok, self.max_distance_cm)
 
         try:
@@ -154,12 +158,32 @@ class UltrasonicSensor:
         self._last_read_ts = now
         return self._last_ok
 
-    @property
-    def distance(self) -> Optional[float]:
-        measurement_cm = self._read_smoothed_distance_cm()
+    def read_distance(self) -> Optional[float]:
+        """Return the current distance measurement in meters, forcing a fresh sensor read."""
+        try:
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message=".*no echo received.*",
+                    category=UserWarning,
+                )
+                raw_cm = float(self.sensor.distance) * 100.0
+        except DistanceSensorNoEcho:
+            return None
+        except Exception:
+            return None
+
+        if not math.isfinite(raw_cm):
+            return None
+
+        measurement_cm = max(0.0, min(raw_cm, self.max_distance_cm))
         if measurement_cm is None:
             return None
         return measurement_cm / 100.0
+
+    @property
+    def distance(self) -> Optional[float]:
+        return self.read_distance()
 
     def close(self) -> None:
         try:
@@ -894,7 +918,7 @@ class RobotController:
         return ret
 
     def poll_obstruction(self, dist_from_obstacle: float = 30.0, read_once: bool = False):
-        sensor = getattr(self, "distance_sensor", None)
+        sensor = self.distance_sensor
         counter = 0
         if sensor is None:
             return None
