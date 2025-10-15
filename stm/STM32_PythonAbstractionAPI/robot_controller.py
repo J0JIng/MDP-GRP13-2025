@@ -703,3 +703,37 @@ class RobotController:
             self._sleep_cmd_retry(attempt, attempts)
 
         return False
+    
+    def T2_O1(self, dir: bool):
+        attempts = 3
+
+        for attempt in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.AUX)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.T2_O1_CHAR)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LEFT_CHAR) if dir else self.drv.add_motor_cmd_byte(self.drv.MotorCmd.RIGHT_CHAR)
+            self.drv.pad_to_end()
+            if self.drv.ll_is_valid(self.drv.send_cmd()):
+                return True
+        
+            self._sleep_cmd_retry(attempt, attempts)
+
+        return False
+    
+    def T2_O2(self, dir: bool):
+        attempts = 3
+
+        for attempt in range(attempts):
+            self.drv.construct_cmd()
+            self.drv.add_cmd_byte(True)
+            self.drv.add_module_byte(self.drv.Modules.AUX)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.T2_O2_CHAR)
+            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LEFT_CHAR) if dir else self.drv.add_motor_cmd_byte(self.drv.MotorCmd.RIGHT_CHAR)
+            self.drv.pad_to_end()
+            if self.drv.ll_is_valid(self.drv.send_cmd()):
+                return True
+            
+            self._sleep_cmd_retry(attempt, attempts)
+
+        return False
