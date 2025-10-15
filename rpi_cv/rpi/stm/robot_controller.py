@@ -6,11 +6,13 @@ import statistics
 import time
 from time import sleep
 
+import warnings
 from collections import deque
 
 import pigpio
 from gpiozero import DistanceSensor
 from gpiozero.pins.pigpio import PiGPIOFactory
+from gpiozero.exc import DistanceSensorNoEcho
 
 from stm.serial_cmd_base_ll import SerialCmdBaseLL
 import RPi.GPIO as GPIO
@@ -108,7 +110,15 @@ class UltrasonicSensor:
             return min(self._last_ok, self.max_distance_cm)
 
         try:
-            raw_cm = float(self.sensor.distance) * 100.0
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message=".*no echo received.*",
+                    category=UserWarning,
+                )
+                raw_cm = float(self.sensor.distance) * 100.0
+        except DistanceSensorNoEcho:
+            return None
         except Exception:
             return None
 
@@ -181,6 +191,7 @@ class RobotController:
         self.drv = SerialCmdBaseLL(port, baudrate)
 
         GPIO.setmode(GPIO.BCM)
+        self._gpio_initialized = True
         trig_pin = getattr(self, "PIN_US_TRIG", 23)
         echo_pin = getattr(self, "PIN_US_ECHO", 24)
         self.distance_sensor = UltrasonicSensor(trigger_pin=trig_pin, echo_pin=echo_pin, max_distance_m=4.0)
@@ -965,10 +976,13 @@ class RobotController:
                 pass
 
         # 3) Only if you used RPi.GPIO directly anywhere (setups, event_detect, etc.)
-        try:
-            GPIO.cleanup()
-        except Exception:
-            pass
+        if getattr(self, "_gpio_initialized", False):
+            try:
+                GPIO.cleanup()
+            except Exception:
+                pass
+            finally:
+                self._gpio_initialized = False
 
     def T2_O1(self, dir: bool):
         attempts = 3
