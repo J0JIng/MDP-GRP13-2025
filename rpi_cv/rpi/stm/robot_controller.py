@@ -38,6 +38,13 @@ Requests are generally cheaper than commands, and can be assumed to return withi
 '''
 
 
+def angle_acb_deg(height: float, base: float) -> float:
+    """Angle at C given legs AB (opposite) and BC (adjacent)."""
+    if height <= 0 or base < 0:
+        raise ValueError("Lengths must be non-negative and AB>0")
+    return math.degrees(math.atan2(height, base))
+
+
 class PinState(Enum):
     HIGH = 1
     LOW = 0
@@ -220,6 +227,9 @@ class RobotController:
         trig_pin = getattr(self, "PIN_US_TRIG", 23)
         echo_pin = getattr(self, "PIN_US_ECHO", 24)
         self.distance_sensor = UltrasonicSensor(trigger_pin=trig_pin, echo_pin=echo_pin, max_distance_m=4.0)
+        self.base = []
+        self.base.append(10)  # first obstacle
+        self.base.append(20)  # buffer between back of robot and first obstacle
         # GPIO.setmode(GPIO.BCM)
         # self.cmd_pin_state = PinState.Z
         # self.obstr_pin_state = PinState.Z
@@ -502,6 +512,7 @@ class RobotController:
         self.validate_dist(dist)
 
         current_distance = self.poll_obstruction(read_once=True)
+        self.base.append(current_distance)
         print("dist:", current_distance)
         if current_distance is None:
             return False
@@ -1052,3 +1063,23 @@ class RobotController:
             self._sleep_cmd_retry(attempt, attempts)
 
         return False
+
+    def return_to_carpark(self, height: float, right_turn: bool):
+        """
+        height should be half of the length of the second obstacle
+        """
+        base = sum(self.base)
+        angle = int(angle_acb_deg(height, base))
+
+        if right_turn:
+            self.turn_right(angle, True)
+        else:
+            self.turn_left(angle, True)
+
+        hyp = math.hypot(height, base)
+        self.crawl_forward(int(hyp))
+        if right_turn:
+            self.turn_left(angle, True)
+        else:
+            self.turn_right(angle, True)
+        self.position_from_obstacle(10)
