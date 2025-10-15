@@ -218,6 +218,12 @@ class STMLink(Link):
                 performed_action = robot is not None
                 # move forward x amount then turn left 90 then turn right 90. (maybe move back a little)
 
+            elif token == "PL01":  # large obstacle left and return to carpark
+                raise NotImplementedError("PL01 command not implemented yet")
+
+            elif token == "PR01":  # large obstacle right and return to carpark
+                raise NotImplementedError("PR01 command not implemented yet")
+
             # Manual steering: TLxx / TRxx (xx degrees, '--' treated as standard 90°)
             elif token.startswith("TL"):
                 angle = _parse_angle(token[2:])

@@ -101,6 +101,7 @@ class RaspberryPi:
 
         self.ack_count = 0
         self.near_flag = self.manager.Lock()
+        self.near_flag_engaged = self.manager.Value('b', False)
 
     def start(self):
         """Starts the RPi orchestrator"""
@@ -218,16 +219,46 @@ class RaspberryPi:
             if msg_str is None:
                 continue
 
-            message: dict = json.loads(msg_str)
+            try:
+                message: dict = json.loads(msg_str)
+            except json.JSONDecodeError:
+                self.logger.warning("Invalid JSON from Android: %r", msg_str)
+                continue
+
+            msg_type = message.get("type") or message.get("cat")
+            if not msg_type:
+                self.logger.warning("Android message missing type/category: %s", message)
+                continue
+
+            msg_type_lower = str(msg_type).lower()
 
             ## Command: Start Moving ##
-            if message['cat'] == "control":
-                if message['value'] == "start":
+            if msg_type_lower == "control":
+                data = message.get("data")
+                control_value = None
+                if isinstance(data, dict):
+                    control_value = data.get("value") or data.get("command") or data.get("action")
+                elif isinstance(data, str):
+                    control_value = data
+
+                if control_value is None:
+                    control_value = message.get("value")
+
+                if isinstance(control_value, str) and control_value.lower() == "start":
 
                     if not self.check_api():
                         self.logger.error("API is down! Start command aborted.")
+                        continue
 
                     self.clear_queues()
+                    self.ack_count = 0
+                    if self.near_flag_engaged.value:
+                        try:
+                            self.near_flag.release()
+                        except ValueError:
+                            pass
+                        self.near_flag_engaged.value = False
+
                     self.command_queue.put("RS00")  # ack_count = 1
 
                     # Small object direction detection
@@ -239,11 +270,11 @@ class RaspberryPi:
                     elif self.small_direction == "Right Arrow":
                         self.command_queue.put("OB01")  # ack_count = 3
                         self.command_queue.put("UR00")  # ack_count = 5
-
-                    elif self.small_direction == None or self.small_direction == 'None':
+                    else:
                         self.logger.info("Acquiring near_flag log")
-                        self.near_flag.acquire()
-
+                        if not self.near_flag_engaged.value:
+                            self.near_flag.acquire()
+                            self.near_flag_engaged.value = True
                         self.command_queue.put("OB01")  # ack_count = 3
 
                     self.logger.info("Start command received, starting robot on Week 9 task!")
@@ -277,8 +308,12 @@ class RaspberryPi:
 
                 self.logger.info(f"self.ack_count: {self.ack_count}")
                 if self.ack_count == 3:
-                    try:
-                        self.near_flag.release()
+                    if self.near_flag_engaged.value:
+                        try:
+                            self.near_flag.release()
+                        except ValueError:
+                            self.logger.debug("near_flag already released before ACK3")
+                        self.near_flag_engaged.value = False
                         self.logger.debug("First ACK received, robot reached first obstacle!")
                         self.small_direction = self.snap_and_rec("Small_Near")
                         if self.small_direction == "Left Arrow":
@@ -288,11 +323,7 @@ class RaspberryPi:
                         else:
                             self.command_queue.put("UL00")  # ack_count = 5
                             self.logger.debug("Failed first one, going left by default!")
-                    # except:
-                        # self.logger.info("No need to release near_flag")
-
-                # if self.ack_count == 3:
-                    except:
+                    else:
                         time.sleep(2)
                         self.logger.debug("First ACK received, robot finished first obstacle!")
                         self.large_direction = self.snap_and_rec("Large")
