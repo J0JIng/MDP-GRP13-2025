@@ -501,6 +501,7 @@ class RobotController:
         self.validate_dist(dist)
 
         current_distance = self.poll_obstruction(read_once=True)
+        print("dist:", current_distance)
         if current_distance is None:
             return False
 
