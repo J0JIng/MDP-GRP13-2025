@@ -189,6 +189,13 @@ class UltrasonicSensor:
             return None
         return measurement_cm
 
+    def read_distance_smoothed(self, force_read: bool = True) -> Optional[float]:
+        """Return the smoothed distance measurement in cm; optionally forces a new sample."""
+        measurement_cm = self._read_smoothed_distance_cm(force_read=force_read)
+        if measurement_cm is None:
+            return None
+        return measurement_cm
+
     @property
     def distance(self) -> Optional[float]:
         """
@@ -952,7 +959,7 @@ class RobotController:
 
         if read_once:
             try:
-                measurement = sensor.distance
+                measurement = sensor.read_distance_smoothed(force_read=True)
             except Exception:
                 return None
             if measurement is None:
