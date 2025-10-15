@@ -229,7 +229,7 @@ class RobotController:
         self.distance_sensor = UltrasonicSensor(trigger_pin=trig_pin, echo_pin=echo_pin, max_distance_m=4.0)
         self.base = []
         self.base.append(10)  # first obstacle
-        self.base.append(20)  # buffer between back of robot and first obstacle
+        self.base.append(10)  # buffer between back of robot and first obstacle
         # GPIO.setmode(GPIO.BCM)
         # self.cmd_pin_state = PinState.Z
         # self.obstr_pin_state = PinState.Z
@@ -1082,4 +1082,4 @@ class RobotController:
             self.turn_left(angle, True)
         else:
             self.turn_right(angle, True)
-        self.position_from_obstacle(10)
+        self.position_from_obstacle(15)
