@@ -1090,10 +1090,10 @@ class RobotController:
         angle = int(angle_acb_deg(height, base))
         print(f"ANGLE: {angle}, HEIGHT: {height}, BASE: {base}, RIGHT TURN: {right_turn}")
 
-        if right_turn:
-            self.turn_right(angle, True)
+        if right_turn:  # +- 10 degrees to compensate for drift
+            self.turn_right(angle - 10, True)
         else:
-            self.turn_left(angle, True)
+            self.turn_left(angle + 10, True)
 
         hyp = math.hypot(height, base)
         self.crawl_forward(int(hyp))
