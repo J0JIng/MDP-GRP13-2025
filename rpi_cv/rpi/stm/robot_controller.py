@@ -480,13 +480,18 @@ class RobotController:
         if current_distance is None:
             return False
 
-        if current_distance > dist:
-            return self.crawl_forward_until_obstacle(dist=dist, retry=retry)
+        delta_cm = float(current_distance) - float(dist)
+        if abs(delta_cm) < 0.5:
+            return True
 
-        if current_distance < dist:
-            return self.crawl_backward_from_obstacle(dist=dist, retry=retry)
+        move_cm = int(round(abs(delta_cm)))
+        if move_cm <= 0:
+            return True
 
-        return True
+        if delta_cm > 0:
+            return self.crawl_forward(move_cm, retry=retry)
+
+        return self.crawl_backward(move_cm, retry=retry)
 
     def _send_crawl_distance(self, dist: int, motor_cmd: SerialCmdBaseLL.MotorCmd, retry: bool) -> bool:
         attempts = 3 if retry else 1
