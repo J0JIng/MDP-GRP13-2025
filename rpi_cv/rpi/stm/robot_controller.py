@@ -827,14 +827,14 @@ class RobotController:
                     continue
                 distance_cm = float(measurement * 100)
                 print(f"{distance_cm:.1f} cm")
-                # if distance_cm <= dist_from_obstacle:
-                # return True
-                last4.append(distance_cm)
-
-                # Only decide once we have 3 samples; require all three below threshold
-                if len(last4) == 4 and all(v <= dist_from_obstacle for v in last4):
+                if distance_cm <= dist_from_obstacle:
                     return True
-                sleep(0.1)
+                # last4.append(distance_cm)
+
+                # # Only decide once we have 3 samples; require all three below threshold
+                # if len(last4) == 4 and all(v <= dist_from_obstacle for v in last4):
+                #     return True
+                sleep(1)
 
         except KeyboardInterrupt:
             return None
