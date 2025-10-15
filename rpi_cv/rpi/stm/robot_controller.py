@@ -199,9 +199,10 @@ class UltrasonicSensor:
                 samples.append(round(measurement))
             if idx < 4:
                 time.sleep(0.1)
-        if not samples:
+        if len(samples) < 3:
             return None
-        return float(statistics.median(samples))
+        samples.sort()
+        return float(samples[len(samples) // 2])
 
     def close(self) -> None:
         try:
