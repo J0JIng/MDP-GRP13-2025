@@ -2,8 +2,9 @@ from enum import Enum
 from typing import Optional, Callable
 import asyncio
 import time
-from gpiozero import DistanceSensor
 from time import sleep
+
+from collections import deque
 
 from stm.serial_cmd_base_ll import SerialCmdBaseLL
 import RPi.GPIO as GPIO
@@ -35,9 +36,61 @@ class PinState(Enum):
     Z = -1
 
 
+class UltrasonicSensor:
+    """Simple ultrasonic distance helper using RPi.GPIO."""
+
+    SPEED_OF_SOUND_CM_S = 34300.0
+
+    def __init__(self, trigger_pin: int, echo_pin: int, max_distance_m: float = 4.0):
+        self.trigger_pin = trigger_pin
+        self.echo_pin = echo_pin
+        self.max_distance_cm = max_distance_m * 100.0
+        # Round-trip timeout slightly above the theoretical maximum for the configured range.
+        self.timeout_s = (self.max_distance_cm * 2) / self.SPEED_OF_SOUND_CM_S + 0.01
+
+        GPIO.setup(self.trigger_pin, GPIO.OUT)
+        GPIO.setup(self.echo_pin, GPIO.IN)
+        GPIO.output(self.trigger_pin, False)
+        time.sleep(0.05)
+
+    def _measure_distance_cm(self) -> Optional[float]:
+        # Trigger a 10µs pulse.
+        GPIO.output(self.trigger_pin, True)
+        time.sleep(0.00001)
+        GPIO.output(self.trigger_pin, False)
+
+        start_wait = time.perf_counter()
+        pulse_start = start_wait
+        while GPIO.input(self.echo_pin) == 0:
+            pulse_start = time.perf_counter()
+            if (pulse_start - start_wait) > self.timeout_s:
+                return None
+
+        pulse_end = pulse_start
+        while GPIO.input(self.echo_pin) == 1:
+            pulse_end = time.perf_counter()
+            if (pulse_end - pulse_start) > self.timeout_s:
+                return None
+
+        pulse_duration = pulse_end - pulse_start
+        distance_cm = (pulse_duration * self.SPEED_OF_SOUND_CM_S) / 2.0
+        if distance_cm < 0:
+            return None
+        if distance_cm > self.max_distance_cm:
+            return self.max_distance_cm
+        return distance_cm
+
+    @property
+    def distance(self) -> Optional[float]:
+        measurement = self._measure_distance_cm()
+        if measurement is None:
+            return None
+        return measurement / 100.0
+
+
 class RobotController:
-    PIN_US_TRIG: int = 15  # TODO DEFINE
-    PIN_US_ECHO: int = 14  # TODO DEFINE
+    PIN_US_TRIG: int = 23
+    PIN_US_ECHO: int = 24
     MOVE_COMPLETION_TIMEOUT_S: float = 60.0
     MOVE_START_TIMEOUT_S: float = 5.0
     MOVE_STOP_STABLE_WINDOW_S: float = 0.2
@@ -50,7 +103,10 @@ class RobotController:
     def __init__(self, port: str, baudrate: int, _inst_obstr_cb: Optional[Callable[..., None]] = None):
         self.drv = SerialCmdBaseLL(port, baudrate)
 
-        self.distance_sensor = DistanceSensor(echo=24, trigger=23, max_distance=4.0)
+        GPIO.setmode(GPIO.BCM)
+        trig_pin = getattr(self, "PIN_US_TRIG", 23)
+        echo_pin = getattr(self, "PIN_US_ECHO", 24)
+        self.distance_sensor = UltrasonicSensor(trigger_pin=trig_pin, echo_pin=echo_pin, max_distance_m=4.0)
         # GPIO.setmode(GPIO.BCM)
         # self.cmd_pin_state = PinState.Z
         # self.obstr_pin_state = PinState.Z
@@ -726,6 +782,7 @@ class RobotController:
 
     def poll_obstruction(self, dist_from_obstacle: float = 30.0, read_once: bool = False):
         sensor = getattr(self, "distance_sensor", None)
+        counter = 0
         if sensor is None:
             return None
 
@@ -738,7 +795,8 @@ class RobotController:
                 return None
             return float(measurement * 100)
 
-        # dist_from_obstacle += 5.0
+        dist_from_obstacle += 5.0
+        last4 = deque(maxlen=4)
 
         try:
             while True:
@@ -749,7 +807,12 @@ class RobotController:
                     continue
                 distance_cm = float(measurement * 100)
                 print(f"{distance_cm:.1f} cm")
-                if distance_cm <= dist_from_obstacle:
+                # if distance_cm <= dist_from_obstacle:
+                # return True
+                last4.append(distance_cm)
+
+                # Only decide once we have 3 samples; require all three below threshold
+                if len(last4) == 4 and all(v <= dist_from_obstacle for v in last4):
                     return True
                 sleep(0.1)
 
@@ -786,3 +849,26 @@ class RobotController:
             self._sleep_cmd_retry(attempt, attempts)
 
         return False
+
+    def close(self):
+        # 1) Close gpiozero devices
+        sensor = getattr(self, "distance_sensor", None)
+        if sensor is not None:
+            try:
+                sensor.close()
+            except Exception:
+                pass
+
+        # 2) Close your serial driver if it supports it
+        drv = getattr(self, "drv", None)
+        if drv and hasattr(drv, "close"):
+            try:
+                drv.close()
+            except Exception:
+                pass
+
+        # 3) Only if you used RPi.GPIO directly anywhere (setups, event_detect, etc.)
+        try:
+            GPIO.cleanup()
+        except Exception:
+            pass
