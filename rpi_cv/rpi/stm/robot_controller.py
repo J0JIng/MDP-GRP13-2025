@@ -91,6 +91,7 @@ class UltrasonicSensor:
                 trigger=self.trigger_pin,
                 max_distance=self.max_distance_m,
                 pin_factory=factory,
+                queue_len=1
             )
         except Exception:
             self.pi.stop()
