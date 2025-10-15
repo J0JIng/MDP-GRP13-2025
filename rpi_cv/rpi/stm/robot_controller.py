@@ -196,7 +196,7 @@ class UltrasonicSensor:
             measurement = self.read_distance()
             print("Ultrasonic reading: ", measurement)
             if measurement is not None and math.isfinite(measurement):
-                samples.append(round(measurement))
+                samples.append(round(measurement * 100))
             if idx < 4:
                 time.sleep(0.1)
         if len(samples) < 3:
@@ -954,7 +954,7 @@ class RobotController:
                 return None
             if measurement is None:
                 return None
-            return float(measurement * 100)
+            return float(measurement)
 
         dist_from_obstacle += 5.0
         last4 = deque(maxlen=4)
@@ -966,7 +966,7 @@ class RobotController:
                 if measurement is None:
                     sleep(0.1)
                     continue
-                distance_cm = float(measurement * 100)
+                distance_cm = float(measurement)
                 print(f"{distance_cm:.1f} cm")
                 if distance_cm <= dist_from_obstacle:
                     return True
