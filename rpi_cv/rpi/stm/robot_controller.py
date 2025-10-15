@@ -1096,7 +1096,7 @@ class RobotController:
         hyp = math.hypot(height, base)
         self.crawl_forward(int(hyp))
         if right_turn:
-            self.turn_left(angle, True)
+            self.turn_left(angle + 90, True)
         else:
-            self.turn_right(angle, True)
+            self.turn_right(angle + 90, True)
         self.position_from_obstacle(15)
