@@ -1091,7 +1091,7 @@ class RobotController:
         print(f"ANGLE: {angle}, HEIGHT: {height}, BASE: {base}, RIGHT TURN: {right_turn}")
 
         if right_turn:  # +- 10 degrees to compensate for drift
-            self.turn_right(angle - 10, True)
+            self.turn_right(angle, True)
         else:
             self.turn_left(angle + 10, True)
 
