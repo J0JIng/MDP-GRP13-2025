@@ -1,10 +1,16 @@
 from enum import Enum
-from typing import Optional, Callable
+from typing import Deque, Optional, Callable
 import asyncio
+import math
+import statistics
 import time
 from time import sleep
 
 from collections import deque
+
+import pigpio
+from gpiozero import DistanceSensor
+from gpiozero.pins.pigpio import PiGPIOFactory
 
 from stm.serial_cmd_base_ll import SerialCmdBaseLL
 import RPi.GPIO as GPIO
@@ -37,55 +43,126 @@ class PinState(Enum):
 
 
 class UltrasonicSensor:
-    """Simple ultrasonic distance helper using RPi.GPIO."""
+    """Ultrasonic distance helper backed by gpiozero + pigpio with smoothing."""
 
-    SPEED_OF_SOUND_CM_S = 34300.0
+    WINDOW_SIZE = 7
+    STEP_CM = 15.0
+    STEP_RATE = 0.25
+    PENDING_TOLERANCE_CM = 5.0
+    PERIOD_S = 0.10
+    GLITCH_FILTER_US = 100
 
-    def __init__(self, trigger_pin: int, echo_pin: int, max_distance_m: float = 4.0):
+    def __init__(
+        self,
+        trigger_pin: int,
+        echo_pin: int,
+        max_distance_m: float = 4.0,
+        pigpio_host: Optional[str] = None,
+        pigpio_port: int = 8888,
+    ) -> None:
         self.trigger_pin = trigger_pin
         self.echo_pin = echo_pin
+        self.max_distance_m = max_distance_m
         self.max_distance_cm = max_distance_m * 100.0
-        # Round-trip timeout slightly above the theoretical maximum for the configured range.
-        self.timeout_s = (self.max_distance_cm * 2) / self.SPEED_OF_SOUND_CM_S + 0.01
 
-        GPIO.setup(self.trigger_pin, GPIO.OUT)
-        GPIO.setup(self.echo_pin, GPIO.IN)
-        GPIO.output(self.trigger_pin, False)
-        time.sleep(0.05)
+        self.pi = (
+            pigpio.pi()
+            if pigpio_host is None
+            else pigpio.pi(pigpio_host, pigpio_port)
+        )
+        if not self.pi.connected:
+            raise RuntimeError(
+                "pigpio daemon not running. Start it with: sudo systemctl enable --now pigpiod"
+            )
 
-    def _measure_distance_cm(self) -> Optional[float]:
-        # Trigger a 10µs pulse.
-        GPIO.output(self.trigger_pin, True)
-        time.sleep(0.00001)
-        GPIO.output(self.trigger_pin, False)
+        factory_kwargs = {}
+        if pigpio_host is not None:
+            factory_kwargs["host"] = pigpio_host
+        if pigpio_port != 8888:
+            factory_kwargs["port"] = pigpio_port
 
-        start_wait = time.perf_counter()
-        pulse_start = start_wait
-        while GPIO.input(self.echo_pin) == 0:
-            pulse_start = time.perf_counter()
-            if (pulse_start - start_wait) > self.timeout_s:
-                return None
+        factory = PiGPIOFactory(**factory_kwargs)
 
-        pulse_end = pulse_start
-        while GPIO.input(self.echo_pin) == 1:
-            pulse_end = time.perf_counter()
-            if (pulse_end - pulse_start) > self.timeout_s:
-                return None
+        try:
+            self.sensor = DistanceSensor(
+                echo=self.echo_pin,
+                trigger=self.trigger_pin,
+                max_distance=self.max_distance_m,
+                pin_factory=factory,
+            )
+        except Exception:
+            self.pi.stop()
+            raise
 
-        pulse_duration = pulse_end - pulse_start
-        distance_cm = (pulse_duration * self.SPEED_OF_SOUND_CM_S) / 2.0
-        if distance_cm < 0:
+        self.pi.set_pull_up_down(self.echo_pin, pigpio.PUD_DOWN)
+        self.pi.set_glitch_filter(self.echo_pin, self.GLITCH_FILTER_US)
+
+        self._window: Deque[float] = deque(maxlen=self.WINDOW_SIZE)
+        self._last_ok: Optional[float] = None
+        self._pending: Optional[float] = None
+        self._last_read_ts: float = 0.0
+
+    def _read_smoothed_distance_cm(self) -> Optional[float]:
+        now = time.monotonic()
+        if self._last_ok is not None and (now - self._last_read_ts) < self.PERIOD_S:
+            return min(self._last_ok, self.max_distance_cm)
+
+        try:
+            raw_cm = float(self.sensor.distance) * 100.0
+        except Exception:
             return None
-        if distance_cm > self.max_distance_cm:
-            return self.max_distance_cm
-        return distance_cm
+
+        if not math.isfinite(raw_cm):
+            return None
+
+        raw_cm = max(0.0, min(raw_cm, self.max_distance_cm))
+        self._window.append(raw_cm)
+        if not self._window:
+            return None
+
+        med = statistics.median(self._window)
+        if self._last_ok is None:
+            self._last_ok = med
+            self._pending = None
+        else:
+            thresh = max(self.STEP_CM, self.STEP_RATE * self._last_ok)
+            if abs(med - self._last_ok) > thresh:
+                if self._pending is None or abs(med - self._pending) > self.PENDING_TOLERANCE_CM:
+                    self._pending = med
+                else:
+                    self._last_ok = self._pending
+                    self._pending = None
+            else:
+                # Weighted smoothing keeps gradual changes responsive without oscillation.
+                self._last_ok = 0.7 * self._last_ok + 0.3 * med
+                self._pending = None
+
+        if self._last_ok is None:
+            return None
+
+        self._last_ok = max(0.0, min(self._last_ok, self.max_distance_cm))
+        self._last_read_ts = now
+        return self._last_ok
 
     @property
     def distance(self) -> Optional[float]:
-        measurement = self._measure_distance_cm()
-        if measurement is None:
+        measurement_cm = self._read_smoothed_distance_cm()
+        if measurement_cm is None:
             return None
-        return measurement / 100.0
+        return measurement_cm / 100.0
+
+    def close(self) -> None:
+        try:
+            self.sensor.close()
+        except Exception:
+            pass
+
+        if self.pi is not None and self.pi.connected:
+            try:
+                self.pi.set_glitch_filter(self.echo_pin, 0)
+            except Exception:
+                pass
+            self.pi.stop()
 
 
 class RobotController:
@@ -834,7 +911,7 @@ class RobotController:
                 # # Only decide once we have 3 samples; require all three below threshold
                 # if len(last4) == 4 and all(v <= dist_from_obstacle for v in last4):
                 #     return True
-                sleep(1)
+                sleep(0.1)
 
         except KeyboardInterrupt:
             return None
@@ -901,15 +978,17 @@ class RobotController:
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.AUX)
             self.drv.add_motor_cmd_byte(self.drv.MotorCmd.T2_O1_CHAR)
-            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LEFT_CHAR) if dir else self.drv.add_motor_cmd_byte(self.drv.MotorCmd.RIGHT_CHAR)
+            self.drv.add_motor_cmd_byte(
+                self.drv.MotorCmd.LEFT_CHAR) if dir else self.drv.add_motor_cmd_byte(
+                self.drv.MotorCmd.RIGHT_CHAR)
             self.drv.pad_to_end()
             if self.drv.ll_is_valid(self.drv.send_cmd()):
                 return True
-        
+
             self._sleep_cmd_retry(attempt, attempts)
 
         return False
-    
+
     def T2_O2(self, dir: bool):
         attempts = 3
 
@@ -918,12 +997,13 @@ class RobotController:
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.AUX)
             self.drv.add_motor_cmd_byte(self.drv.MotorCmd.T2_02_CHAR)
-            self.drv.add_motor_cmd_byte(self.drv.MotorCmd.LEFT_CHAR) if dir else self.drv.add_motor_cmd_byte(self.drv.MotorCmd.RIGHT_CHAR)
+            self.drv.add_motor_cmd_byte(
+                self.drv.MotorCmd.LEFT_CHAR) if dir else self.drv.add_motor_cmd_byte(
+                self.drv.MotorCmd.RIGHT_CHAR)
             self.drv.pad_to_end()
             if self.drv.ll_is_valid(self.drv.send_cmd()):
                 return True
-            
+
             self._sleep_cmd_retry(attempt, attempts)
 
         return False
-
