@@ -191,7 +191,17 @@ class UltrasonicSensor:
 
     @property
     def distance(self) -> Optional[float]:
-        return self.read_distance()
+        samples = []
+        for idx in range(5):
+            measurement = self.read_distance()
+            print("Ultrasonic reading: ", measurement)
+            if measurement is not None and math.isfinite(measurement):
+                samples.append(round(measurement))
+            if idx < 4:
+                time.sleep(0.1)
+        if not samples:
+            return None
+        return float(statistics.median(samples))
 
     def close(self) -> None:
         try:
