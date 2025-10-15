@@ -246,7 +246,7 @@ class RobotController:
 
         return False
 
-    def crawl_forward(self, dist: int, retry: bool = True, chunk_large_moves: bool = True) -> bool:
+    def crawl_forward(self, dist: int, retry: bool = True, chunk_large_moves: bool = False) -> bool:
         '''
         Command robot to move FORWARD by [dist] cm. IN A SLOW MANNER. 
         0 <= dist <= 999
@@ -307,7 +307,7 @@ class RobotController:
 
         return False
 
-    def crawl_backward(self, dist: int, retry: bool = True, chunk_large_moves: bool = True) -> bool:
+    def crawl_backward(self, dist: int, retry: bool = True, chunk_large_moves: bool = False) -> bool:
         '''
         Command robot to move BACKWARD by [dist] cm. IN A SLOW MANNER. 
         0 <= dist <= 999
@@ -379,6 +379,26 @@ class RobotController:
             self._sleep_cmd_retry(attempt, attempts)
 
         return False
+
+    def position_from_obstacle(self, dist: int, retry: bool = True) -> bool:
+        '''
+        Adjust the robot so that its front is approximately [dist] cm from the obstacle.
+        Moves forward if it is too far, or backward if it is too close.
+        '''
+
+        self.validate_dist(dist)
+
+        current_distance = self.poll_obstruction(read_once=True)
+        if current_distance is None:
+            return False
+
+        if current_distance > dist:
+            return self.crawl_forward_until_obstacle(dist=dist, retry=retry)
+
+        if current_distance < dist:
+            return self.crawl_backward_from_obstacle(dist=dist, retry=retry)
+
+        return True
 
     def _send_crawl_distance(self, dist: int, motor_cmd: SerialCmdBaseLL.MotorCmd, retry: bool) -> bool:
         attempts = 3 if retry else 1

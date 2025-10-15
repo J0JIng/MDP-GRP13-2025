@@ -30,7 +30,7 @@ NAME_TO_ID = {
 }
 
 
-def load_model(weights_path="./weights/detectionv2.pt", device=None):
+def load_model(weights_path="./weights/week9v4.pt", device=None):
     """
     Load a YOLOv8/YOLOv12 model from ultralytics.
     - weights_path: path to your .pt (e.g., 'best.pt', 'yolov8n.pt', 'Week_9.pt')
@@ -112,7 +112,9 @@ def _save_v8_visual(result, save_dir="runs"):
     return out_path
 
 # accounts for single bulleyes case
-def predict_image(image, model, signal): 
+
+
+def predict_image(image, model, signal):
     """
     Original Week 8 logic adapted to v8+.
     Keeps filename-based logic you already had: area sorting + signal L/R/C. 
@@ -124,7 +126,7 @@ def predict_image(image, model, signal):
         r = results[0]
         _save_v8_visual(r, save_dir="runs")  # mimic v5 results.save('runs')
 
-        preds_all = _results_to_dicts_v8(r) 
+        preds_all = _results_to_dicts_v8(r)
         pred = "NA"  # initialized to NA for final prediction
 
         # --- Minimal addition: handle single Bullseye case ---
@@ -167,7 +169,6 @@ def predict_image(image, model, signal):
                                 chosen = d
                                 break
                         pred = chosen if chosen else sorted(pred_shortlist, key=lambda d: d["bboxArea"])[-1]
-
 
         if isinstance(pred, dict):
             draw_own_bbox(np.array(img_pil), pred['xmin'], pred['ymin'], pred['xmax'], pred['ymax'], pred['name'])
@@ -212,17 +213,24 @@ def predict_image_week_9(image, model):
     image_id = str(NAME_TO_ID[pred['name']]) if not isinstance(pred, str) else 'NA'
     return image_id
 
-def auto_grid(n:int):
+
+def auto_grid(n: int):
     """
     Given n images, return (rows,cols) for stitching.
     """
-    if n <= 0: return (0,0)
-    if n == 1: return (1,1)
-    if n == 2: return (2,1)
-    if n == 3: return (3,1)
-    if n == 4: return (2,2) 
-    if n <= 6: return (3,2)
-    return (2,4)  # max 8 images supported
+    if n <= 0:
+        return (0, 0)
+    if n == 1:
+        return (1, 1)
+    if n == 2:
+        return (2, 1)
+    if n == 3:
+        return (3, 1)
+    if n == 4:
+        return (2, 2)
+    if n <= 6:
+        return (3, 2)
+    return (2, 4)  # max 8 images supported
 
 
 def stitch_image_own():
@@ -239,7 +247,7 @@ def stitch_image_own():
     images = [Image.open(x[0]) for x in sortedByTimeStampImages]
     if not images:
         return Image.new('RGB', (1, 1))
-    
+
     # Use the most recent up to 8 images (still works if fewer than 4 exist)
     take = min(8, len(sortedByTimeStampImages))
     selectedPairs = sortedByTimeStampImages[-take:]
@@ -256,13 +264,16 @@ def stitch_image_own():
     for idx, im in enumerate(images):
         r = idx // cols
         c = idx % cols
-        if r >= rows: break
+        if r >= rows:
+            break
         w, h = im.size
-        if h > row_heights[r]: row_heights[r] = h
-        if w > col_widths[c]: col_widths[c] = w
+        if h > row_heights[r]:
+            row_heights[r] = h
+        if w > col_widths[c]:
+            col_widths[c] = w
 
     # Canvas size (sum of row/col sizes + padding gutters)
-    total_width  = sum(col_widths) + pad * (cols + 1)
+    total_width = sum(col_widths) + pad * (cols + 1)
     total_height = sum(row_heights) + pad * (rows + 1)
     stitchedImg = Image.new('RGB', (total_width, total_height))
 
@@ -278,7 +289,8 @@ def stitch_image_own():
     for idx, im in enumerate(images):
         r = idx // cols
         c = idx % cols
-        if r >= rows: break
+        if r >= rows:
+            break
         w, h = im.size
         x0 = x_origins[c] + (col_widths[c] - w) // 2
         y0 = y_origins[r] + (row_heights[r] - h) // 2
@@ -288,15 +300,11 @@ def stitch_image_own():
     return stitchedImg
 
 
-
-
-
-
 # # initial prediction function
 # def predict_image(image, model, signal):
 #     """
 #     Original Week 8 logic adapted to v8+.
-#     Keeps filename-based logic you already had: area sorting + signal L/R/C. 
+#     Keeps filename-based logic you already had: area sorting + signal L/R/C.
 #     """
 #     try:
 #         img_path = os.path.join('uploads', image)
@@ -366,10 +374,10 @@ def stitch_image_own():
 #         else:
 #             image_id = "NA"
 #             pred_conf = 0.0
-        
+
 #         print(f"Final result: {image_id}")
 #         print(f"Predicted confidence: {pred_conf:.4f}")
 #         return image_id, pred_conf
 #     except Exception as e:
-        # print(f"Final result: NA ({e})")
-        # return 'NA', 0.0
+    # print(f"Final result: NA ({e})")
+    # return 'NA', 0.0

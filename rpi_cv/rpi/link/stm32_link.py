@@ -208,21 +208,69 @@ class STMLink(Link):
 
             elif token == "UL00":  # small obstacle left
                 robot = _ensure_robot()
-                success = bool(robot and robot.turn_left(90, True))
                 performed_action = robot is not None
-                # move forward x amount then turn right 90 then turn left 90. (maybe move back a little)
+                if robot is not None:
+                    success = True
+                    for action in (
+                        lambda: robot.turn_left(45, True),
+                        lambda: robot.crawl_forward(10),
+                        lambda: robot.turn_right(90, True),
+                        lambda: robot.crawl_forward(10),
+                        lambda: robot.turn_left(45, True)
+                    ):
+                        if not action():
+                            success = False
+                            break
 
             elif token == "UR00":  # small obstacle right
                 robot = _ensure_robot()
-                success = bool(robot and robot.turn_right(90, True))
                 performed_action = robot is not None
-                # move forward x amount then turn left 90 then turn right 90. (maybe move back a little)
+                if robot is not None:
+                    success = True
+                    for action in (
+                        lambda: robot.turn_right(45, True),
+                        lambda: robot.crawl_forward(10),
+                        lambda: robot.turn_left(90, True),
+                        lambda: robot.crawl_forward(10),
+                        lambda: robot.turn_right(45, True)
+                    ):
+                        if not action():
+                            success = False
+                            break
 
             elif token == "PL01":  # large obstacle left and return to carpark
-                raise NotImplementedError("PL01 command not implemented yet")
+                robot = _ensure_robot()
+                performed_action = robot is not None
+                if robot is not None:
+                    success = True
+                    for action in (
+                        lambda: robot.turn_left(90, True),
+                        lambda: robot.move_til_right_obs_turn(90, True),
+                        lambda: robot.crawl_forward(5),
+                        lambda: robot.turn_right(90, True),
+                        lambda: robot.move_til_right_obs_turn(90, True),
+                        # add come back to carpark function here
+                    ):
+                        if not action():
+                            success = False
+                            break
 
             elif token == "PR01":  # large obstacle right and return to carpark
-                raise NotImplementedError("PR01 command not implemented yet")
+                robot = _ensure_robot()
+                performed_action = robot is not None
+                if robot is not None:
+                    success = True
+                    for action in (
+                        lambda: robot.turn_right(90, True),
+                        lambda: robot.move_til_left_obs_turn(90, True),
+                        lambda: robot.crawl_forward(5),
+                        lambda: robot.turn_left(90, True),
+                        lambda: robot.move_til_left_obs_turn(90, True),
+                        # add come back to carpark function here
+                    ):
+                        if not action():
+                            success = False
+                            break
 
             # Manual steering: TLxx / TRxx (xx degrees, '--' treated as standard 90°)
             elif token.startswith("TL"):
