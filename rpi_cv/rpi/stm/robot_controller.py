@@ -167,7 +167,7 @@ class UltrasonicSensor:
         return self._last_ok
 
     def read_distance(self) -> Optional[float]:
-        """Return the current distance measurement in meters, forcing a fresh sensor read."""
+        """Return the current distance measurement in cm, forcing a fresh sensor read."""
         try:
             with warnings.catch_warnings():
                 warnings.filterwarnings(
@@ -187,16 +187,19 @@ class UltrasonicSensor:
         measurement_cm = max(0.0, min(raw_cm, self.max_distance_cm))
         if measurement_cm is None:
             return None
-        return measurement_cm / 100.0
+        return measurement_cm
 
     @property
     def distance(self) -> Optional[float]:
+        """
+        Returns the distance in cm or None if no valid reading is available.
+        """
         samples = []
         for idx in range(5):
             measurement = self.read_distance()
             print("Ultrasonic reading: ", measurement)
             if measurement is not None and math.isfinite(measurement):
-                samples.append(round(measurement * 100))
+                samples.append(round(measurement))
             if idx < 4:
                 time.sleep(0.1)
         if len(samples) < 3:
