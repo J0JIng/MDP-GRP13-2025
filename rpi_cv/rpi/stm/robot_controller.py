@@ -1086,6 +1086,7 @@ class RobotController:
         height should be half of the length of the second obstacle
         """
         base = sum(self.base)
+        height += 10  # add 10cm for robot offset from 2nd obstacle
         angle = int(angle_acb_deg(height, base))
         print(f"ANGLE: {angle}, HEIGHT: {height}, BASE: {base}, RIGHT TURN: {right_turn}")
 
