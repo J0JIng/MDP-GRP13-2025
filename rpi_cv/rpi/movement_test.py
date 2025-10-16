@@ -72,12 +72,16 @@ def movement_test():
     robot.set_reset_sensor_values()
 #     robot.crawl_forward(100)
 # =================================================
-#     Get past second obs (right arrow):
-#    robot.turn_right(90, True)
-#    robot.move_til_left_obs_turn(90, True)
-#    robot.crawl_forward(5)
-#    robot.turn_left(90, True)
-#    robot.move_til_left_obs_turn(90, True)
+#     Get past second obs (right arrow)
+#    robot.crawl_forward_until_obstacle(30)
+#     robot.turn_right(90, True)
+#     robot.move_til_left_obs_turn(90, True)
+#     robot.crawl_forward(5)
+#     robot.turn_left(90, True)
+#     robot.move_til_left_obs_turn(90, True)
+#     robot.crawl_forward(70)
+#     robot.turn_left(90, True)
+#     robot.turn_right(90, True)
 # =================================================
 #     Get past second obs (left arrow):
 #     robot.turn_left(90, True)
@@ -87,19 +91,19 @@ def movement_test():
 #     robot.move_til_right_obs_turn(90, True)
 # =================================================
 
-    robot.crawl_forward_until_obstacle(35)
+#     robot.crawl_forward_until_obstacle(35)
     # robot.crawl_backward_from_obstacle(30)
-    robot.turn_right(45, True)
-    robot.crawl_forward(10)
-    robot.turn_left(90, True)
-    robot.crawl_forward(10)
-    robot.turn_right(45, True)
-    robot.crawl_forward_until_obstacle(35)
-    robot.turn_right(90, True)
-    robot.move_til_left_obs_turn(90, True)
-    robot.crawl_forward(5)
-    robot.turn_left(90, True)
-    robot.move_til_left_obs_turn(90, True)
+#     robot.turn_right(45, True)
+#     robot.crawl_forward(10)
+#     robot.turn_left(90, True)
+#     robot.crawl_forward(10)
+#     robot.turn_right(45, True)
+#     robot.crawl_forward_until_obstacle(35)
+#     robot.turn_right(90, True)
+#     robot.move_til_left_obs_turn(90, True)
+#     robot.crawl_forward(5)
+#     robot.turn_left(90, True)
+#     robot.move_til_left_obs_turn(90, True)
 #     robot.crawl_backward_from_obstacle(40)
 #     robot.turn_right(45, True)
 #     robot.crawl_forward(5)
@@ -113,12 +117,39 @@ def movement_test():
 #     robot.turn_left(45, True)
 #     robot.turn_right(90, True)
 
+#     robot.position_from_obstacle(35)
+#     robot.move_forward_until_obstacle(45)
+#     robot.crawl_forward_until_obstacle(30)
+#     robot.crawl_backward_from_obstacle(30)
+
+    robot.position_from_obstacle(30)
+
+    robot.turn_right(45, True)
+    robot.crawl_forward(10)
+    robot.turn_left(90, True)
+    robot.crawl_forward(10)
+    robot.turn_right(45, True)
+    robot.crawl_backward(25)
+
+    robot.position_from_obstacle(30)
+
+    robot.turn_left(90, True)
+    robot.crawl_backward(30)
+    robot.move_til_right_obs_turn(90, True)
+    robot.crawl_forward(5)
+    robot.turn_right(90, True)
+    robot.move_til_right_obs_turn(90, True)
+    length_2_obs = robot.get_last_successful_arg()
+    robot.return_to_carpark(length_2_obs/2, True)
+
+
+#     robot.position_from_obstacle(30)
+
 
 # if __name__ == "__main__":
 #    if not movement_test():
 #        print("Movement test aborted due to earlier failure.")
 #        raise SystemExit(1)
-
 if __name__ == "__main__":
     robot = RobotController(ROBOT_PORT, ROBOT_BAUD)  # extra added
     movement_test()

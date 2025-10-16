@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 from config.load_config import load_stm32_config
 from link.base import Link
@@ -57,6 +58,7 @@ class STMLink(Link):
         self.robot: Optional[RobotController] = None
         self._last_ack: Optional[bool] = None
         self._ack_queue = None
+        self._robot_pid = None
 
     def set_ack_queue(self, ack_queue) -> None:
         """Bind a multiprocessing-aware queue to publish acknowledgement results."""
@@ -69,6 +71,7 @@ class STMLink(Link):
             port = self.config["serial_port"]["id"]
             baud = self.config["serial_port"]["baud_rate"]
             self.robot = RobotController(port, baud)
+            self._robot_pid = os.getpid()
             self.logger.info("RobotController initialised (port=%s baud=%s)", port, baud)
         except Exception as e:
             self.logger.error("Failed to initialise RobotController: %s")
@@ -122,12 +125,20 @@ class STMLink(Link):
             return None
 
         def _ensure_robot() -> Optional[RobotController]:
+            if self.robot is not None and self._robot_pid != os.getpid():
+                try:
+                    self.robot.close()
+                except Exception:
+                    pass
+                self.robot = None
+
             if self.robot is None:
                 try:
                     port = self.config["serial_port"]["id"]
                     baud = self.config["serial_port"]["baud_rate"]
                     self.logger.info("Initialising RobotController (port=%s baud=%s)", port, baud)
                     self.robot = RobotController(port, baud)
+                    self._robot_pid = os.getpid()
                 except Exception as exc:
                     self.logger.error("Failed to initialise RobotController: %s", exc)
                     return None
