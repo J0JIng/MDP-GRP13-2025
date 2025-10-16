@@ -127,8 +127,10 @@ class UltrasonicSensor:
                 )
                 raw_cm = float(self.sensor.distance) * 100.0
         except DistanceSensorNoEcho:
+            logger.debug("UltrasonicSensor._read_raw_distance_cm: no echo")
             return None
-        except Exception:
+        except Exception as e:
+            logger.debug("UltrasonicSensor._read_raw_distance_cm: error reading sensor: %s", e)
             return None
 
         if not math.isfinite(raw_cm):
@@ -140,6 +142,7 @@ class UltrasonicSensor:
         now = time.monotonic()
         if force_read:
             measurement_cm = self._read_raw_distance_cm()
+            logger.debug("UltrasonicSensor._read_raw_distance_cm: %s", measurement_cm)
             if measurement_cm is None:
                 return None
             self._last_read_ts = now
@@ -193,6 +196,7 @@ class UltrasonicSensor:
     def read_distance_smoothed(self, force_read: bool = True) -> Optional[float]:
         """Return the smoothed distance measurement in cm; optionally forces a new sample."""
         measurement_cm = self._read_smoothed_distance_cm(force_read=force_read)
+        logger.debug("UltrasonicSensor.read_distance_smoothed: %s", measurement_cm)
         if measurement_cm is None:
             return None
         return measurement_cm
@@ -1049,9 +1053,11 @@ class RobotController:
         if read_once:
             try:
                 measurement = sensor.read_distance_smoothed(force_read=True)
-            except Exception:
+            except Exception as e:
+                logger.debug(f"poll_obstruction: error reading sensor: {e}")
                 return None
             if measurement is None:
+                logger.debug("poll_obstruction: sensor reading is None")
                 return None
             return float(measurement)
 
