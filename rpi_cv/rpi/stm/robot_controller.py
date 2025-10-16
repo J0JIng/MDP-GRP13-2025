@@ -120,14 +120,10 @@ class UltrasonicSensor:
     def _read_raw_distance_cm(self) -> Optional[float]:
         try:
             logger.debug("UltrasonicSensor._read_raw_distance_cm: reading sensor now")
-            with warnings.catch_warnings():
-                warnings.filterwarnings(
-                    "ignore",
-                    message=".*no echo received.*",
-                    category=UserWarning,
-                )
-                distance_ratio = self.sensor.distance
 
+            distance_ratio = self.sensor.distance
+
+            logger.debug("UltrasonicSensor._read_raw_distance_cm: sensor.distance returned %s", distance_ratio)
             if distance_ratio is None:
                 logger.debug("UltrasonicSensor._read_raw_distance_cm: sensor.distance returned None")
                 return None
