@@ -44,7 +44,7 @@ def image_predict():
     result = {
         "obstacle_id": obstacle_id,
         "image_id": image_id,
-        "confidence": pred_conf
+        # "confidence": pred_conf
     }
     return jsonify(result)
 

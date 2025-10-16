@@ -82,6 +82,9 @@ class RaspberryPi:
         # Set robot mode to be 1 (Path mode)
         self.robot_mode = self.manager.Value('i', 1)
 
+        # Shared acknowledgement channel for STM32 responses across processes
+        self.stm_ack_queue = self.manager.Queue()
+
         # Events
         self.android_dropped = self.manager.Event()  # Set when the android link drops
         # commands will be retrieved from commands queue when this event is set
@@ -106,6 +109,9 @@ class RaspberryPi:
         self.near_flag = self.manager.Lock()
         self.near_flag_engaged = self.manager.Value('b', False)
         self.latest_task_payload = {}
+
+        # Ensure STMLink publishes acknowledgements to the shared queue before forking
+        self.stm_link.set_ack_queue(self.stm_ack_queue)
 
     def _process_task_setup(self, msg_type: str, payload: Optional[dict]) -> bool:
         """Record the latest task payload from Android and acknowledge it."""
@@ -320,63 +326,72 @@ class RaspberryPi:
         [Child Process] Receive acknowledgement messages from STM32, and release the movement lock
         """
         while True:
-
-            message: Optional[str] = self.stm_link.recv()
-            if message is None:
+            try:
+                ack_result = self.stm_ack_queue.get()
+            except (EOFError, OSError):
+                self.logger.debug("STM acknowledgement queue interrupted; continuing")
                 continue
 
-            # Acknowledgement from STM32
-            if message.startswith("ACK"):
+            if ack_result is None:
+                self.logger.debug("STM acknowledgement queue returned None; ignoring")
+                continue
 
-                self.ack_count += 1
+            if not isinstance(ack_result, bool):
+                self.logger.warning("Unexpected acknowledgement payload from STM queue: %r", ack_result)
+                continue
 
-                # Release movement lock
+            if not ack_result:
+                self.logger.warning("STM32 reported NACK for the last command")
                 try:
                     self.movement_lock.release()
                 except Exception:
-                    self.logger.warning("Tried to release a released lock!")
+                    self.logger.debug("Movement lock already released after NACK")
+                self.android_queue.put(AndroidMessage('error', 'STM32 failed to execute last command'))
+                continue
 
-                self.logger.debug(f"ACK from STM32 received, ACK count now:{self.ack_count}")
+            self.ack_count += 1
 
-                self.logger.info(f"self.ack_count: {self.ack_count}")
-                if self.ack_count == 3:
-                    if self.near_flag_engaged.value:
-                        try:
-                            self.near_flag.release()
-                        except ValueError:
-                            self.logger.debug("near_flag already released before ACK3")
-                        self.near_flag_engaged.value = False
-                        self.logger.debug("First ACK received, robot reached first obstacle!")
-                        self.small_direction = self.snap_and_rec("Small_Near")
-                        if self.small_direction == "Left Arrow":
-                            self.command_queue.put("UL00")  # ack_count = 5
-                        elif self.small_direction == "Right Arrow":
-                            self.command_queue.put("UR00")  # ack_count = 5
-                        else:
-                            self.command_queue.put("UL00")  # ack_count = 5
-                            self.logger.debug("Failed first one, going left by default!")
+            # Release movement lock
+            try:
+                self.movement_lock.release()
+            except Exception:
+                self.logger.warning("Tried to release a released lock!")
+
+            self.logger.debug(f"ACK from STM32 received, ACK count now:{self.ack_count}")
+
+            self.logger.info(f"self.ack_count: {self.ack_count}")
+            if self.ack_count == 3:
+                if self.near_flag_engaged.value:
+                    try:
+                        self.near_flag.release()
+                    except ValueError:
+                        self.logger.debug("near_flag already released before ACK3")
+                    self.near_flag_engaged.value = False
+                    self.logger.debug("First ACK received, robot reached first obstacle!")
+                    self.small_direction = self.snap_and_rec("Small_Near")
+                    if self.small_direction == "Left Arrow":
+                        self.command_queue.put("UL00")  # ack_count = 5
+                    elif self.small_direction == "Right Arrow":
+                        self.command_queue.put("UR00")  # ack_count = 5
                     else:
-                        time.sleep(2)
-                        self.logger.debug("First ACK received, robot finished first obstacle!")
-                        self.large_direction = self.snap_and_rec("Large")
-                        if self.large_direction == "Left Arrow":
-                            self.command_queue.put("PL01")  # ack_count = 6
-                        elif self.large_direction == "Right Arrow":
-                            self.command_queue.put("PR01")  # ack_count = 6
-                        else:
-                            self.command_queue.put("PR01")  # ack_count = 6
-                            self.logger.debug("Failed second one, going right by default!")
+                        self.command_queue.put("UL00")  # ack_count = 5
+                        self.logger.debug("Failed first one, going left by default!")
+                else:
+                    time.sleep(2)
+                    self.logger.debug("First ACK received, robot finished first obstacle!")
+                    self.large_direction = self.snap_and_rec("Large")
+                    if self.large_direction == "Left Arrow":
+                        self.command_queue.put("PL01")  # ack_count = 6
+                    elif self.large_direction == "Right Arrow":
+                        self.command_queue.put("PR01")  # ack_count = 6
+                    else:
+                        self.command_queue.put("PR01")  # ack_count = 6
+                        self.logger.debug("Failed second one, going right by default!")
 
-                if self.ack_count == 6:
-                    self.logger.debug("Second ACK received from STM32!")
-                    self.android_queue.put(AndroidMessage("status", "finished"))
-                    self.command_queue.put("FIN")
-
-                # except Exception:
-                #     self.logger.warning("Tried to release a released lock!")
-            else:
-                self.logger.warning(
-                    f"Ignored unknown message from STM: {message}")
+            if self.ack_count == 6:
+                self.logger.debug("Second ACK received from STM32!")
+                self.android_queue.put(AndroidMessage("status", "finished"))
+                self.command_queue.put("FIN")
 
     def android_sender(self) -> None:
         while True:
