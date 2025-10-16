@@ -266,7 +266,7 @@ class STMLink(Link):
                         lambda: robot.crawl_forward(5),
                         lambda: robot.turn_right(90, True),
                         lambda: robot.move_til_right_obs_turn(90, True),
-                        lambda: robot.return_to_carpark(robot.get_last_successful_arg()/2, False)
+                        lambda: robot.return_to_carpark(robot.get_last_successful_arg()/2, True)
                     ):
                         if not action():
                             success = False
@@ -284,7 +284,7 @@ class STMLink(Link):
                         lambda: robot.crawl_forward(5),
                         lambda: robot.turn_left(90, True),
                         lambda: robot.move_til_left_obs_turn(90, True),
-                        lambda: robot.return_to_carpark(robot.get_last_successful_arg()/2, True)
+                        lambda: robot.return_to_carpark(robot.get_last_successful_arg()/2, False)
                     ):
                         if not action():
                             success = False
