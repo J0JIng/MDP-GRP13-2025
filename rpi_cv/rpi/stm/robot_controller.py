@@ -1236,24 +1236,30 @@ class RobotController:
         logger.debug(f"ANGLE: {angle}, HEIGHT: {height}, BASE: {base}, RIGHT TURN: {right_turn}")
 
         if right_turn:  # +- 5 degrees to compensate for drift
-            self.turn_right(angle, True)
+            if not self.turn_right(angle, True):
+                return False
         else:
-            self.turn_left(angle, True)
+            if not self.turn_left(angle, True):
+                return False
 
-        hyp = math.hypot(height, base)
+        travel_cm = int(math.hypot(height, base))
         # self.crawl_forward(int(hyp))
-        self.move_forward(int(hyp))
+        if not self.move_forward(travel_cm):
+            return False
         if right_turn:
-            self.turn_left(angle, True)
+            if not self.turn_left(angle, True):
+                return False
         else:
-            self.turn_right(angle, True)
-        self.position_from_obstacle(18)
+            if not self.turn_right(angle, True):
+                return False
+        return bool(self.position_from_obstacle(18))
 
     def return_to_carpark_v2(self, height: float, right_turn: bool):
         """
         height should be half of the length of the second obstacle
         """
-        self.move_forward(self.base[-1] + 40)
+        if not self.move_forward(self.base[-1] + 40):
+            return False
 
         base = self.base[-2] + 23  # add 30 becauase of initial move_forward of 30 before first obstacle
         height += 10  # add 10cm for robot offset from 2nd obstacle
@@ -1261,15 +1267,20 @@ class RobotController:
         logger.debug(f"ANGLE: {angle}, HEIGHT: {height}, BASE: {base}, RIGHT TURN: {right_turn}")
 
         if right_turn:  # +- 5 degrees to compensate for drift
-            self.turn_right(angle, True)
+            if not self.turn_right(angle, True):
+                return False
         else:
-            self.turn_left(angle, True)
+            if not self.turn_left(angle, True):
+                return False
 
-        hyp = math.hypot(height, base)
+        travel_cm = int(math.hypot(height, base))
         # self.crawl_forward(int(hyp))
-        self.move_forward(int(hyp))
+        if not self.move_forward(travel_cm):
+            return False
         if right_turn:
-            self.turn_left(angle, True)
+            if not self.turn_left(angle, True):
+                return False
         else:
-            self.turn_right(angle, True)
-        self.position_from_obstacle(15)
+            if not self.turn_right(angle, True):
+                return False
+        return bool(self.position_from_obstacle(15))
