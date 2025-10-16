@@ -133,6 +133,8 @@ class UltrasonicSensor:
             logger.debug("UltrasonicSensor._read_raw_distance_cm: error reading sensor: %s", e)
             return None
 
+        logger.debug("UltrasonicSensor._read_raw_distance_cm: raw_cm=%.2f", raw_cm)
+
         if not math.isfinite(raw_cm):
             return None
 
