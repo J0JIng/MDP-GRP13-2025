@@ -1050,17 +1050,21 @@ class RobotController:
         logger.debug("poll_obstruction: dist_from_obstacle=%.1f read_once=%s", dist_from_obstacle, read_once)
         counter = 0
         if sensor is None:
+            logger.debug("poll_obstruction: sensor is None")
             return None
 
         if read_once:
             try:
                 measurement = sensor.read_distance_smoothed(force_read=True)
+                logger.debug("poll_obstruction: single reading=%.1f cm", measurement)
             except Exception as e:
                 logger.debug(f"poll_obstruction: error reading sensor: {e}")
                 return None
             if measurement is None:
                 logger.debug("poll_obstruction: sensor reading is None")
                 return None
+
+            logger.debug("poll_obstruction: single reading=%.1f cm", measurement)
             return float(measurement)
 
         dist_from_obstacle += 5.0
