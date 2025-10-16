@@ -6,6 +6,7 @@ from multiprocessing import Process, Manager
 from typing import Optional
 import os
 import requests
+from requests import exceptions as requests_exceptions
 from config.load_config import load_rpi_config
 from link.android_link import AndroidLink, AndroidMessage
 from link.stm32_link import STMLink
@@ -49,6 +50,8 @@ SYMBOL_MAP = {
     "39": "Left Arrow",
     "40": "Stop"
 }
+
+REQUEST_TIMEOUT_SECONDS = 60
 
 
 class PiAction:
@@ -102,6 +105,65 @@ class RaspberryPi:
         self.ack_count = 0
         self.near_flag = self.manager.Lock()
         self.near_flag_engaged = self.manager.Value('b', False)
+        self.latest_task_payload = {}
+
+    def _process_task_setup(self, msg_type: str, payload: Optional[dict]) -> bool:
+        """Record the latest task payload from Android and acknowledge it."""
+        if payload is None:
+            self.logger.warning("%s message missing data payload", msg_type)
+            self.android_queue.put(AndroidMessage('error', f"{msg_type.upper()} payload missing data"))
+            self.latest_task_payload = {}
+            return False
+
+        self.latest_task_payload = payload
+        try:
+            pretty = json.dumps(payload)
+        except TypeError:
+            pretty = str(payload)
+        self.logger.info("Received %s payload from Android: %s", msg_type.upper(), pretty)
+        self.android_queue.put(AndroidMessage('info', f"{msg_type.upper()} payload received"))
+        return True
+
+    def _begin_week9_task(self, trigger_desc: str) -> None:
+        """Kick off the Week 9 sequence from any Android trigger."""
+        if not self.check_api():
+            self.logger.error("API is down! Start command aborted (%s).", trigger_desc)
+            self.android_queue.put(AndroidMessage('error', 'Image API unavailable, start aborted'))
+            return
+
+        self.unpause.clear()
+        self.clear_queues()
+        self.ack_count = 0
+
+        if self.near_flag_engaged.value:
+            try:
+                self.near_flag.release()
+            except ValueError:
+                pass
+            self.near_flag_engaged.value = False
+
+        self.command_queue.put("RS00")
+
+        self.small_direction = self.snap_and_rec("Small")
+        self.logger.info("Initial small obstacle direction: %s", self.small_direction)
+        if self.small_direction == "Left Arrow":
+            self.command_queue.put("OB01")
+            self.command_queue.put("UL00")
+        elif self.small_direction == "Right Arrow":
+            self.command_queue.put("OB01")
+            self.command_queue.put("UR00")
+        else:
+            self.logger.info("Acquiring near_flag prior to first obstacle")
+            if not self.near_flag_engaged.value:
+                self.near_flag.acquire()
+                self.near_flag_engaged.value = True
+            self.command_queue.put("OB01")
+
+        self.logger.info("Start command received via %s, commencing Week 9 task", trigger_desc)
+        self.android_queue.put(AndroidMessage('info', f"Starting robot via {trigger_desc}"))
+        self.android_queue.put(AndroidMessage('status', 'running'))
+
+        self.unpause.set()
 
     def start(self):
         """Starts the RPi orchestrator"""
@@ -232,6 +294,12 @@ class RaspberryPi:
 
             msg_type_lower = str(msg_type).lower()
 
+            if msg_type_lower in ("start_task", "fastest_path"):
+                task_payload = message.get("data")
+                if self._process_task_setup(str(msg_type), task_payload):
+                    self._begin_week9_task(f"android {msg_type_lower}")
+                continue
+
             ## Command: Start Moving ##
             if msg_type_lower == "control":
                 data = message.get("data")
@@ -245,43 +313,7 @@ class RaspberryPi:
                     control_value = message.get("value")
 
                 if isinstance(control_value, str) and control_value.lower() == "start":
-
-                    if not self.check_api():
-                        self.logger.error("API is down! Start command aborted.")
-                        continue
-
-                    self.clear_queues()
-                    self.ack_count = 0
-                    if self.near_flag_engaged.value:
-                        try:
-                            self.near_flag.release()
-                        except ValueError:
-                            pass
-                        self.near_flag_engaged.value = False
-
-                    self.command_queue.put("RS00")  # ack_count = 1
-
-                    # Small object direction detection
-                    self.small_direction = self.snap_and_rec("Small")
-                    self.logger.info(f"HERE small direction is: {self.small_direction}")
-                    if self.small_direction == "Left Arrow":
-                        self.command_queue.put("OB01")  # ack_count = 3
-                        self.command_queue.put("UL00")  # ack_count = 5
-                    elif self.small_direction == "Right Arrow":
-                        self.command_queue.put("OB01")  # ack_count = 3
-                        self.command_queue.put("UR00")  # ack_count = 5
-                    else:
-                        self.logger.info("Acquiring near_flag log")
-                        if not self.near_flag_engaged.value:
-                            self.near_flag.acquire()
-                            self.near_flag_engaged.value = True
-                        self.command_queue.put("OB01")  # ack_count = 3
-
-                    self.logger.info("Start command received, starting robot on Week 9 task!")
-                    self.android_queue.put(AndroidMessage('status', 'running'))
-
-                    # Commencing path following | Main trigger to start movement #
-                    self.unpause.set()
+                    self._begin_week9_task("android control:start")
 
     def recv_stm(self) -> None:
         """
@@ -437,15 +469,32 @@ class RaspberryPi:
 
             self.logger.debug("Requesting from image API")
 
-            with open(filename, 'rb') as image_file:
-                response = requests.post(
-                    url, files={"file": (filename, image_file)})
+            try:
+                with open(filename, 'rb') as image_file:
+                    response = requests.post(
+                        url,
+                        files={"file": (filename, image_file)},
+                        timeout=REQUEST_TIMEOUT_SECONDS,
+                    )
+            except requests_exceptions.RequestException as exc:
+                self.logger.error("Image API request failed: %s", exc)
+                self.android_queue.put(AndroidMessage('error', f"Image capture failed for {obstacle_id}: {exc}"))
+                return None
 
             if response.status_code != 200:
                 self.logger.error("Something went wrong when requesting path from image-rec API. Please try again.")
+                self.android_queue.put(
+                    AndroidMessage(
+                        'error',
+                        f"Image API returned status {response.status_code} for {obstacle_id}"))
                 return None
 
-            results = json.loads(response.content)
+            try:
+                results = response.json()
+            except ValueError as exc:
+                self.logger.error("Invalid JSON from image API: %s", exc)
+                self.android_queue.put(AndroidMessage('error', f"Image API response invalid for {obstacle_id}"))
+                return None
 
             # Higher brightness retry
 
@@ -475,6 +524,12 @@ class RaspberryPi:
         ans = SYMBOL_MAP.get(results['image_id'])
         self.logger.info(f"Image recognition results: {results} ({ans})")
 
+        image_id = results.get('image_id', 'NA')
+        try:
+            self.android_queue.put(AndroidMessage.image_results(obstacle_id, image_id))
+        except Exception as exc:
+            self.logger.error("Failed to enqueue image results for Android: %s", exc)
+
         if ans is None:
             self.android_queue.put(AndroidMessage('obstacle', f"Obstacle {obstacle_id}: No symbol detected"))
             self.logger.warning(f"Obstacle {obstacle_id}: No symbol detected")
@@ -486,9 +541,16 @@ class RaspberryPi:
         IMAGE_API_PORT = self.config['api']['image_port']
 
         url = f"http://{API_IP}:{IMAGE_API_PORT}/stitch"
-        response = requests.get(url)
+        try:
+            response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
+        except requests_exceptions.RequestException as exc:
+            self.logger.error("Stitch request failed: %s", exc)
+            self.android_queue.put(AndroidMessage('error', 'Image stitch request failed'))
+            return
+
         if response.status_code != 200:
             self.logger.error("Something went wrong when requesting stitch from the API.")
+            self.android_queue.put(AndroidMessage('error', f'Stitch API returned status {response.status_code}'))
             return
         self.logger.info("Images stitched!")
 
@@ -502,14 +564,16 @@ class RaspberryPi:
 
         url = f"http://{API_IP}:{IMAGE_API_PORT}/status"
         try:
-            response = requests.get(url, timeout=1)
+            response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
             if response.status_code == 200:
                 self.logger.debug("API is up!")
                 return True
-        except ConnectionError:
+        except requests_exceptions.ConnectionError:
             self.logger.warning("API Connection Error")
-        except requests.Timeout:
+        except requests_exceptions.Timeout:
             self.logger.warning("API Timeout")
+        except requests_exceptions.RequestException as exc:
+            self.logger.warning(f"API RequestException: {exc}")
         except Exception as e:
             self.logger.warning(f"API Exception: {e}")
 
