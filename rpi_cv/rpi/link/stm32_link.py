@@ -230,7 +230,8 @@ class STMLink(Link):
                         lambda: robot.crawl_forward(10),
                         lambda: robot.turn_right(90, True),
                         lambda: robot.crawl_forward(10),
-                        lambda: robot.turn_left(45, True)
+                        lambda: robot.turn_left(45, True),
+                        lambda: robot.crawl_backward(25)
                     ):
                         if not action():
                             success = False
@@ -246,7 +247,8 @@ class STMLink(Link):
                         lambda: robot.crawl_forward(10),
                         lambda: robot.turn_left(90, True),
                         lambda: robot.crawl_forward(10),
-                        lambda: robot.turn_right(45, True)
+                        lambda: robot.turn_right(45, True),
+                        lambda: robot.crawl_backward(25)
                     ):
                         if not action():
                             success = False
