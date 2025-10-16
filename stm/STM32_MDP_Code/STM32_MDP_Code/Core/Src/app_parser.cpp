@@ -233,7 +233,7 @@ void Processor::processorTask(void *pv) {
 								sizeof(ack), 10);
 					}
 
-					else if (isEq(T2_90R_CHAR, msg.buffer[3])) {
+					else if (isEq(T2_02_CHAR, msg.buffer[3])) {
 						MOTION_PKT_t *pkt = new MOTION_PKT_t();
 						pkt->turn_opt = isEq(LEFT_CHAR, msg.buffer[4]);
 						osMessageQueuePut(tx_ctx->mailbox.queue, pkt, 0, 0);
