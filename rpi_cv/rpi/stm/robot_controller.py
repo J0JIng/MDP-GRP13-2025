@@ -119,6 +119,7 @@ class UltrasonicSensor:
 
     def _read_raw_distance_cm(self) -> Optional[float]:
         try:
+            logger.debug("UltrasonicSensor._read_raw_distance_cm: reading sensor now")
             with warnings.catch_warnings():
                 warnings.filterwarnings(
                     "ignore",
@@ -126,6 +127,8 @@ class UltrasonicSensor:
                     category=UserWarning,
                 )
                 raw_cm = float(self.sensor.distance) * 100.0
+
+            logger.debug("UltrasonicSensor._read_raw_distance_cm: read raw_cm=%.2f", raw_cm)
         except DistanceSensorNoEcho:
             logger.debug("UltrasonicSensor._read_raw_distance_cm: no echo")
             return None
@@ -1072,12 +1075,23 @@ class RobotController:
 
         try:
             while True:
-                # sensor.distance is in meters (float 0.0–1.0+)
-                measurement = sensor.distance
-                if measurement is None:
-                    sleep(0.1)
+                # sensor.distance is returned in metres; convert to centimetres for comparison.
+                try:
+                    measurement_m = sensor.distance
+                except DistanceSensorNoEcho:
+                    logger.debug("poll_obstruction: no echo detected, retrying")
+                    sleep(0.05)
                     continue
-                distance_cm = float(measurement)
+                except Exception as exc:
+                    logger.debug("poll_obstruction: error reading sensor: %s", exc)
+                    sleep(0.05)
+                    continue
+
+                if measurement_m is None or not math.isfinite(measurement_m):
+                    sleep(0.05)
+                    continue
+
+                distance_cm = float(measurement_m) * 100.0
                 logger.debug("poll_obstruction: raw reading=%.1f cm", distance_cm)
                 if distance_cm <= dist_from_obstacle:
                     logger.info(
