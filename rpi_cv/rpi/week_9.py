@@ -109,6 +109,8 @@ class RaspberryPi:
         self.near_flag = self.manager.Lock()
         self.near_flag_engaged = self.manager.Value('b', False)
         self.latest_task_payload = {}
+        self.awaiting_carpark_stitch = self.manager.Value('b', False)
+        self.stitch_enqueued = self.manager.Value('b', False)
 
         # Ensure STMLink publishes acknowledgements to the shared queue before forking
         self.stm_link.set_ack_queue(self.stm_ack_queue)
@@ -140,6 +142,8 @@ class RaspberryPi:
         self.unpause.clear()
         self.clear_queues()
         self.ack_count = 0
+        self.stitch_enqueued.value = False
+        self.awaiting_carpark_stitch.value = False
 
         if self.near_flag_engaged.value:
             try:
@@ -387,6 +391,17 @@ class RaspberryPi:
                     else:
                         self.command_queue.put("PR01")  # ack_count = 6
                         self.logger.debug("Failed second one, going right by default!")
+                    self.awaiting_carpark_stitch.value = True
+
+            if (
+                self.awaiting_carpark_stitch.value
+                and not self.stitch_enqueued.value
+                and self.ack_count >= 4
+            ):
+                self.logger.debug("Carpark reached, enqueueing stitch action")
+                self.rpi_action_queue.put(PiAction(cat="stitch", value="carpark"))
+                self.stitch_enqueued.value = True
+                self.awaiting_carpark_stitch.value = False
 
             if self.ack_count == 6:
                 self.logger.debug("Second ACK received from STM32!")
@@ -420,7 +435,9 @@ class RaspberryPi:
                 self.logger.info("Commands queue finished.")
                 self.android_queue.put(AndroidMessage("info", "Commands queue finished."))
                 self.android_queue.put(AndroidMessage("status", "finished"))
-                self.rpi_action_queue.put(PiAction(cat="stitch", value=""))
+                if not self.stitch_enqueued.value:
+                    self.rpi_action_queue.put(PiAction(cat="stitch", value=""))
+                    self.stitch_enqueued.value = True
             else:
                 raise Exception(f"Unknown command: {command}")
 
