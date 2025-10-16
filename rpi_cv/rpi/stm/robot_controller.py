@@ -944,7 +944,7 @@ class RobotController:
         try:
             ret = float(ret)
         except ValueError:
-            return None
+            raise Exception("Invalid return value for last successful arg")
         return ret
 
     def poll_obstruction(self, dist_from_obstacle: float = 30.0, read_once: bool = False):
