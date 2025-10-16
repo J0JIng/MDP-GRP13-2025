@@ -1263,7 +1263,7 @@ class RobotController:
         if not self.move_forward(self.base[-1] + 40):
             return False
 
-        base = self.base[-2] + 23  # add 23 because of initial move_forward of 30 before first obstacle
+        base = self.base[-2]  # add 23 because of initial move_forward of 30 before first obstacle
         height += 23  # add 23cm for robot offset from 2nd obstacle
         angle = int(angle_acb_deg(height, base))
         logger.debug(f"ANGLE: {angle}, HEIGHT: {height}, BASE: {base}, RIGHT TURN: {right_turn}")
