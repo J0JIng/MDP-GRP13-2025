@@ -276,7 +276,6 @@ class RobotController:
         self.base.append(10)  # first obstacle
         self.base.append(10)  # buffer between back of robot and first obstacle
         self.base.append(5)
-        self.base.append(30)    # this is for the initial 30cm move forward to first obstacle
         # GPIO.setmode(GPIO.BCM)
         # self.cmd_pin_state = PinState.Z
         # self.obstr_pin_state = PinState.Z
@@ -575,20 +574,16 @@ class RobotController:
 
         return False
 
-    def position_from_obstacle(self, dist: int, retry: bool = True, first=False) -> bool:
+    def position_from_obstacle(self, dist: int, retry: bool = True) -> bool:
         '''
         Adjust the robot so that its front is approximately [dist] cm from the obstacle.
         Moves forward if it is too far, or backward if it is too close.
         '''
         self.set_reset_sensor_values()
-        self.move_forward(30)
         logger.info("position_from_obstacle: target distance=%s cm", dist)
         self.validate_dist(dist)
-        current_distance = 0
 
-        while first and (current_distance is None or current_distance <= 25):
-            current_distance = self.poll_obstruction(read_once=True)
-            time.sleep(0.5)
+        current_distance = self.poll_obstruction(read_once=True)
 
         self.base.append(current_distance)
         logger.debug("position_from_obstacle: initial distance reading=%s", current_distance)

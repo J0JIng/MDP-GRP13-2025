@@ -153,10 +153,10 @@ class RaspberryPi:
         self.small_direction = self.snap_and_rec("Small")
         self.logger.info("Initial small obstacle direction: %s", self.small_direction)
         if self.small_direction == "Left Arrow":
-            self.command_queue.put("OB00")
+            self.command_queue.put("OB01")
             self.command_queue.put("UL00")
         elif self.small_direction == "Right Arrow":
-            self.command_queue.put("OB00")
+            self.command_queue.put("OB01")
             self.command_queue.put("UR00")
         else:
             self.logger.info("Acquiring near_flag prior to first obstacle")

@@ -217,14 +217,6 @@ class STMLink(Link):
                     success = bool(robot and robot.crawl_backward(dist))
                     performed_action = robot is not None
 
-            elif token == "OB00":
-                robot = _ensure_robot()
-                if robot is not None:
-                    self.logger.debug("OB00: preparing to position from obstacle (30cm target)")
-                success = bool(robot and robot.position_from_obstacle(30, first=True))
-                self.logger.debug("OB00: position_from_obstacle returned %s", success)
-                performed_action = robot is not None
-
             elif token == "OB01":
                 robot = _ensure_robot()
                 if robot is not None:
