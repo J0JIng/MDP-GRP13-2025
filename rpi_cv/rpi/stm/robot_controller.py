@@ -275,7 +275,7 @@ class RobotController:
         self.base = []
         self.base.append(10)  # first obstacle
         self.base.append(10)  # buffer between back of robot and first obstacle
-        self.base.append(10)
+        self.base.append(7)
         # GPIO.setmode(GPIO.BCM)
         # self.cmd_pin_state = PinState.Z
         # self.obstr_pin_state = PinState.Z
@@ -574,7 +574,7 @@ class RobotController:
 
         return False
 
-    def position_from_obstacle(self, dist: int, retry: bool = True) -> bool:
+    def position_from_obstacle(self, dist: int, retry: bool = True, first: bool = False) -> bool:
         '''
         Adjust the robot so that its front is approximately [dist] cm from the obstacle.
         Moves forward if it is too far, or backward if it is too close.
@@ -583,7 +583,14 @@ class RobotController:
         logger.info("position_from_obstacle: target distance=%s cm", dist)
         self.validate_dist(dist)
 
-        current_distance = self.poll_obstruction(read_once=True)
+        current_distance = 0
+
+        if first:
+            while current_distance is None or current_distance <= 50:
+                current_distance = self.poll_obstruction(read_once=True)
+                sleep(0.5)
+        else:
+            current_distance = self.poll_obstruction(read_once=True)
 
         self.base.append(current_distance)
         logger.debug("position_from_obstacle: initial distance reading=%s", current_distance)
@@ -1240,7 +1247,7 @@ class RobotController:
             self.turn_left(angle, True)
         else:
             self.turn_right(angle, True)
-        self.position_from_obstacle(15)
+        self.position_from_obstacle(18)
 
     def return_to_carpark_v2(self, height: float, right_turn: bool):
         """
