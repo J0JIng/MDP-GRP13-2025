@@ -15,8 +15,19 @@ namespace AppMotion {
 	#define LEFT_ENCODER_SCALE 1.0
 	#define RIGHT_ENCODER_SCALE 0.996  // adjust based on reference choice
 	#define REAR_WHEEL_ROTATION_DISTANCE (3.142 * 6.5)
-	#define ENCODER_PULSES_PER_WHEEL_ROTATION 1560
+	#define ENCODER_PULSES_PER_WHEEL_ROTATION 780
 	#define DISTANCE_PER_ENCODER_PULSE (REAR_WHEEL_ROTATION_DISTANCE / ENCODER_PULSES_PER_WHEEL_ROTATION)
+
+// Simple file-scope yaw drift estimate (deg / sec). Updated slowly at runtime.
+static float g_yaw_drift_bias_dps = 0.0f;
+
+// Small helper: shortest angular difference (a - b) in degrees in range [-180,180]
+static float angDiff(float a, float b) {
+	float d = a - b;
+	while (d > 180.0f) d -= 360.0f;
+	while (d < -180.0f) d += 360.0f;
+	return d;
+}
 
 	MotionController::MotionController(u_ctx *ctx) {
 		this->ctx = ctx;
@@ -106,10 +117,11 @@ namespace AppMotion {
 		Motor *lmotor = self->lmotor;
 		Motor *rmotor = self->rmotor;
 		Servo *servo = self->servo;
-		osDelay(4500);
+
 //		servo->turnLeft();
 //		servo->turnRight();
 		servo->turnFront();
+		osDelay(4500);
 
 		/* workaround section END. henceforth refer to any "this" as "self" */
 
@@ -151,8 +163,25 @@ namespace AppMotion {
 //			self->moveAndTurnAfterObstacle(false, true, false, 90);
 //			self->move(false, 10, 35, false, false);
 //			self->turn(false, true, false, 20);
-//			self->move(true, 100, 35, false, false);
-			//self->moveAndTurnAfterObstacle(false, true, false, 175);
+			//self->move(true, 50, 35, false, false);
+			//self->move(false, 50, 35, false, false);
+//			self->turn(true, true, false, 90);
+//			osDelay(4500);
+//			self->move(true, 25, 35, false, false);
+//			self->turn(true, true, false, 90);
+//			osDelay(4500);
+//			self->move(true, 25, 35, false, false);
+//
+//			osDelay(4500);
+//			self->move(true, 25, 35, false, false);
+//			osDelay(4500);
+//			self->move(false, 50, 35, false, false);
+
+//			self->move(true, 50, 35, false, false);
+//			self->turn(true, true, false, 90);
+//			self->move(false, 50, 35, false, false);
+//			self->turn(true, true, false, 90);
+			//self->moveAndTurnAfterObstacle(true, true, false, 90);
 
 			//while(1){} // uncomment this code if you are using any of the test code above.
 
@@ -224,7 +253,7 @@ namespace AppMotion {
 		emergency = false;
 		sensor_data.is_moving = true;
 		servo->turnFront();
-
+		osDelay(300);
 		lmotor->setSpeed(speed, isFwd);
 		rmotor->setSpeed(speed, isFwd);
 
@@ -233,20 +262,18 @@ namespace AppMotion {
 
 		if (isCrawl)
 		{
-			if (isFwd){
-				lmotor->setSpeed(50, isFwd);
-				rmotor->setSpeed(50, isFwd);
-			} else{
-				lmotor->setSpeed(25, isFwd);
-				rmotor->setSpeed(25, isFwd);
-			}
-
+				lmotor->setSpeed(30, isFwd);
+				rmotor->setSpeed(30, isFwd);
 		}
 
 		uint32_t dist_travelled = 0;
 		uint32_t l_encoder_count = lencoder->getCount();
 		uint32_t r_encoder_count = rencoder->getCount();
 		double target = (double) arg / DISTANCE_PER_ENCODER_PULSE;
+
+		if (!isFwd){
+			target = target *2;
+		}
 
 		double cur_left = 0, cur_right = 0;
 		float count_left = 0, count_right = 0;
@@ -260,6 +287,13 @@ namespace AppMotion {
 
 
 		double speed_error = 0;
+		// yaw correction helpers for this move
+		bool _move_yaw_init = false;
+		float _move_start_yaw = 0.0f;
+		uint32_t _move_start_time = 0;
+		float _prev_yaw = 0.0f;
+		uint32_t _prev_yaw_time = 0;
+
 		do {
 
 //    		OLED_ShowString(0, 20, (uint8_t*)"looping...");
@@ -271,7 +305,70 @@ namespace AppMotion {
 
 			cur_left += count_left * LEFT_ENCODER_SCALE;
 			cur_right += count_right * RIGHT_ENCODER_SCALE;
+			// update baseline counts so getDelta() returns per-iteration delta (avoid cumulative double-counting)
+			l_encoder_count = lencoder->getCount();
+			r_encoder_count = rencoder->getCount();
 			speed_error += (count_left - count_right);
+
+			// --- YAW-BASED MICRO-STEERING CORRECTION ---
+			// initialize reference yaw at start of move
+			if (!_move_yaw_init) {
+				_move_start_yaw = sensor_data.yaw_abs;
+				_move_start_time = HAL_GetTick();
+				_prev_yaw = sensor_data.yaw_abs;
+				_prev_yaw_time = sensor_data.yaw_abs_time ? sensor_data.yaw_abs_time : _move_start_time;
+				_move_yaw_init = true;
+			}
+
+			// estimate instantaneous yaw rate and update global bias estimator
+			{
+				uint32_t now_time = HAL_GetTick();
+				float yaw_now = sensor_data.yaw_abs;
+				float dt = (float)( (sensor_data.yaw_abs_time && _prev_yaw_time) ? (sensor_data.yaw_abs_time - _prev_yaw_time) : (now_time - _prev_yaw_time)) / 1000.0f;
+				if (dt > 0.001f) {
+					float inst_rate = angDiff(yaw_now, _prev_yaw) / dt; // deg/sec
+					// very slow low-pass to estimate bias
+					g_yaw_drift_bias_dps = (g_yaw_drift_bias_dps * 0.995f) + (inst_rate * 0.005f);
+				}
+				_prev_yaw = yaw_now;
+				_prev_yaw_time = sensor_data.yaw_abs_time ? sensor_data.yaw_abs_time : now_time;
+			}
+
+			// compute yaw error relative to expected biased reference
+			float elapsed_s = (float)(HAL_GetTick() - _move_start_time) / 1000.0f;
+			float expected_bias = g_yaw_drift_bias_dps * elapsed_s;
+			float ref_yaw = _move_start_yaw + expected_bias;
+			float yaw_error = angDiff(sensor_data.yaw_abs, ref_yaw); // deg, positive means rotated LEFT from ref (user convention)
+
+			// convert yaw error to small servo PWM offset
+			const float SERVO_YAW_GAIN = 2.0f; // PWM counts per degree (tune on robot)
+			// use SLIGHT_LEFT_DELTA and SLIGHT_RIGHT_DELTA as micro-adjust caps
+			int32_t max_left = SLIGHT_LEFT_DELTA; // positive offset to left is negative PWM offset
+			int32_t max_right = SLIGHT_RIGHT_DELTA; // positive offset to right is positive PWM offset
+			int32_t pwm_offset = (int32_t)(yaw_error * SERVO_YAW_GAIN); // positive yaw (left) -> positive pwm_offset -> steer right to compensate
+			// clamp by side-specific slight deltas
+			if (pwm_offset > max_right) {
+				if (isFwd){
+				pwm_offset = max_right;
+				}
+				else {
+				pwm_offset = -max_right;
+				}
+			}
+			if (pwm_offset < -max_left){
+				if (isFwd){
+					pwm_offset = -max_left;
+				}
+				else {pwm_offset = max_left;}
+			}
+			uint32_t pwm_cmd = (uint32_t)((int32_t) CENTER_POS_PWM + pwm_offset);
+			// apply micro-adjustment without long blocking
+
+
+			if (isFwd){
+				servo->turnToPos(pwm_cmd);
+			}
+
 
 			if (!isCrawl && !nostop) {
 
@@ -454,36 +551,137 @@ namespace AppMotion {
 		sensor_data.is_moving = true;
 		emergency = false;
 		float ir_threshold = 20.0f;
+		sensor_data.last_halt_val = 0;
+
+		servo->turnFront();
+			osDelay(400);
+
+		uint32_t dist_travelled = 0;
 		uint32_t l_encoder_count = lencoder->getCount();
 		uint32_t r_encoder_count = rencoder->getCount();
+		double target = (double) arg / DISTANCE_PER_ENCODER_PULSE;
+
+		double cur_left = 0, cur_right = 0;
 		float count_left = 0, count_right = 0;
 
+		sensor_data.target = target;
+		sensor_data.cur_left = cur_left;
+		sensor_data.cur_right = cur_right;
 
-		// MOVE LOGIC
-		do{
-			servo->turnFront();
-			lmotor->setSpeed(20, isFwd);
-			rmotor->setSpeed(20, isFwd);
 
-			// check isObstacle is to the right
-			if (isRight && sensor_data.ir_distR > ir_threshold){
-				count_left = (double) lencoder->getDelta(l_encoder_count, lencoder->getCount());
-				count_right = (double) rencoder->getDelta(r_encoder_count, rencoder->getCount());
-				sensor_data.last_halt_val = (uint32_t) (count_left>count_right?count_right:count_left) * DISTANCE_PER_ENCODER_PULSE;
+		double speed_error = 0;
+		// yaw correction helpers for this move
+		bool _move_yaw_init = false;
+		float _move_start_yaw = 0.0f;
+		uint32_t _move_start_time = 0;
+		float _prev_yaw = 0.0f;
+		uint32_t _prev_yaw_time = 0;
 
+		lmotor->setSpeed(20, isFwd);
+		rmotor->setSpeed(20, isFwd);
+
+		do {
+
+			count_left = (double) lencoder->getDelta(l_encoder_count, lencoder->getCount());
+			count_right = (double) rencoder->getDelta(r_encoder_count, rencoder->getCount());
+
+
+			cur_left += count_left * LEFT_ENCODER_SCALE;
+			cur_right += count_right * RIGHT_ENCODER_SCALE;
+			// update baseline counts so getDelta() returns per-iteration delta (avoid cumulative double-counting)
+			l_encoder_count = lencoder->getCount();
+			r_encoder_count = rencoder->getCount();
+			speed_error += (count_left - count_right);
+
+			// --- YAW-BASED MICRO-STEERING CORRECTION ---
+			// initialize reference yaw at start of move
+			if (!_move_yaw_init) {
+				_move_start_yaw = sensor_data.yaw_abs;
+				_move_start_time = HAL_GetTick();
+				_prev_yaw = sensor_data.yaw_abs;
+				_prev_yaw_time = sensor_data.yaw_abs_time ? sensor_data.yaw_abs_time : _move_start_time;
+				_move_yaw_init = true;
+			}
+
+			// estimate instantaneous yaw rate and update global bias estimator
+			{
+				uint32_t now_time = HAL_GetTick();
+				float yaw_now = sensor_data.yaw_abs;
+				float dt = (float)( (sensor_data.yaw_abs_time && _prev_yaw_time) ? (sensor_data.yaw_abs_time - _prev_yaw_time) : (now_time - _prev_yaw_time)) / 1000.0f;
+				if (dt > 0.001f) {
+					float inst_rate = angDiff(yaw_now, _prev_yaw) / dt; // deg/sec
+					// very slow low-pass to estimate bias
+					g_yaw_drift_bias_dps = (g_yaw_drift_bias_dps * 0.995f) + (inst_rate * 0.005f);
+				}
+				_prev_yaw = yaw_now;
+				_prev_yaw_time = sensor_data.yaw_abs_time ? sensor_data.yaw_abs_time : now_time;
+			}
+
+			// compute yaw error relative to expected biased reference
+			float elapsed_s = (float)(HAL_GetTick() - _move_start_time) / 1000.0f;
+			float expected_bias = g_yaw_drift_bias_dps * elapsed_s;
+			float ref_yaw = _move_start_yaw + expected_bias;
+			float yaw_error = angDiff(sensor_data.yaw_abs, ref_yaw); // deg, positive means rotated LEFT from ref (user convention)
+
+			// convert yaw error to small servo PWM offset
+			const float SERVO_YAW_GAIN = 2.0f; // PWM counts per degree (tune on robot)
+			// use SLIGHT_LEFT_DELTA and SLIGHT_RIGHT_DELTA as micro-adjust caps
+			int32_t max_left = SLIGHT_LEFT_DELTA; // positive offset to left is negative PWM offset
+			int32_t max_right = SLIGHT_RIGHT_DELTA; // positive offset to right is positive PWM offset
+			int32_t pwm_offset = (int32_t)(yaw_error * SERVO_YAW_GAIN); // positive yaw (left) -> positive pwm_offset -> steer right to compensate
+			// clamp by side-specific slight deltas
+			if (pwm_offset > max_right) {
+				if (isFwd){
+				pwm_offset = max_right;
+				}
+				else {
+				pwm_offset = -max_right;
+				}
+			}
+			if (pwm_offset < -max_left){
+				if (isFwd){
+					pwm_offset = -max_left;
+				}
+				else {pwm_offset = max_left;}
+			}
+			uint32_t pwm_cmd = (uint32_t)((int32_t) CENTER_POS_PWM + pwm_offset);
+			// apply micro-adjustment without long blocking
+
+
+			servo->turnToPos(pwm_cmd);
+
+
+			l_encoder_count = lencoder->getCount();
+			r_encoder_count = rencoder->getCount();
+			dist_travelled = (uint32_t) (cur_left>cur_right?cur_right:cur_left) * DISTANCE_PER_ENCODER_PULSE;
+			sensor_data.last_halt_val = dist_travelled;
+
+			if ((isRight && sensor_data.ir_distR > ir_threshold) || (!isRight && sensor_data.ir_distL > ir_threshold))
+			{
+				sensor_data.last_halt_val = (uint32_t) (cur_left>cur_right?cur_right:cur_left) * DISTANCE_PER_ENCODER_PULSE;
+				sensor_data.cur_left = cur_left;
+				sensor_data.cur_right = cur_right;
+				lmotor->halt();
+				rmotor->halt();
 				break;
 			}
-			// check isObstacle is to the left
-			else if (!isRight && sensor_data.ir_distL > ir_threshold){
-				count_left = (double) lencoder->getDelta(l_encoder_count, lencoder->getCount());
-				count_right = (double) rencoder->getDelta(r_encoder_count, rencoder->getCount());
-				sensor_data.last_halt_val = (uint32_t) (count_left>count_right?count_right:count_left) * DISTANCE_PER_ENCODER_PULSE;
 
-				break;
-			}
-		} while(1);
+			osDelay(10);
+			sensor_data.cur_left = cur_left;
+			sensor_data.cur_right = cur_right;
+			osThreadYield();
 
-		// TURN LOGIC
+		} while (1);
+
+
+		lmotor->halt();
+		rmotor->halt();
+
+
+//		// TURN LOGIC
+		servo->turnFront();
+		osDelay(400);
+
 		isRight ? servo->turnRight() : servo->turnLeft();
 		isRight ? lmotor->setSpeed(71, isFwd) : lmotor->setSpeed(20, isFwd);
 		isRight ? rmotor->setSpeed(20, isFwd) : rmotor->setSpeed(71, isFwd);
@@ -566,6 +764,8 @@ namespace AppMotion {
 
 		} while (1);
 
+		servo->turnFront();
+		osDelay(400);
 		lmotor->halt();
 		rmotor->halt();
 		emergency = false;
@@ -1179,18 +1379,23 @@ namespace AppMotion {
 	}
 
 	void Servo::turnLeft() {
-		this->htimer->Instance->CCR1 = MIN_PWM;
-		osDelay(TURN_DELAY_MS);
-
+		// default behaviour preserved but delegate to turnToPos
+		turnToPos(MIN_PWM);
 	}
 	void Servo::turnRight() {
-		this->htimer->Instance->CCR1 = MAX_PWM;
-		osDelay(TURN_DELAY_MS);
+		turnToPos(MAX_PWM);
 	}
 
 	void Servo::turnFront() {
-		this->htimer->Instance->CCR1 = CTR_PWM;
-		osDelay(TURN_DELAY_MS);
+		turnToPos(CTR_PWM);
+	}
+
+	void Servo::turnToPos(uint32_t count) {
+		if (count < MIN_PWM) count = MIN_PWM;
+		if (count > MAX_PWM) count = MAX_PWM;
+		this->htimer->Instance->CCR1 = count;
+		// small delay so frequent micro-adjustments can occur while moving
+		osDelay(10);
 	}
 
 
