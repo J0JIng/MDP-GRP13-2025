@@ -227,11 +227,14 @@ class STMLink(Link):
                     success = True
                     for action in (
                         lambda: robot.turn_left(45, True),
-                        lambda: robot.crawl_forward(10),
+                        # lambda: robot.crawl_forward(10),
+                        lambda: robot.move_forward(10),
                         lambda: robot.turn_right(90, True),
-                        lambda: robot.crawl_forward(10),
+                        # lambda: robot.crawl_forward(10),
+                        lambda: robot.move_forward(10),
                         lambda: robot.turn_left(45, True),
-                        lambda: robot.crawl_backward(25)
+                        # lambda: robot.crawl_backward(25)
+                        lambda: robot.move_backward(25)
                     ):
                         if not action():
                             success = False
@@ -244,11 +247,14 @@ class STMLink(Link):
                     success = True
                     for action in (
                         lambda: robot.turn_right(45, True),
-                        lambda: robot.crawl_forward(10),
+                        # lambda: robot.crawl_forward(10),
+                        lambda: robot.move_forward(10),
                         lambda: robot.turn_left(90, True),
-                        lambda: robot.crawl_forward(10),
+                        # lambda: robot.crawl_forward(10),
+                        lambda: robot.move_forward(10),
                         lambda: robot.turn_right(45, True),
-                        lambda: robot.crawl_backward(25)
+                        # lambda: robot.crawl_backward(25)
+                        lambda: robot.move_backward(25)
                     ):
                         if not action():
                             success = False
@@ -262,9 +268,11 @@ class STMLink(Link):
                     for action in (
                         lambda: robot.position_from_obstacle(30),
                         lambda: robot.turn_left(90, True),
-                        lambda: robot.crawl_backward(30),
+                        # lambda: robot.crawl_backward(30),
+                        lambda: robot.move_forward(30),
                         lambda: robot.move_til_right_obs_turn(90, True),
-                        lambda: robot.crawl_forward(5),
+                        # lambda: robot.crawl_forward(5),
+                        lambda: robot.move_forward(5),
                         lambda: robot.turn_right(90, True),
                         lambda: robot.move_til_right_obs_turn(90, True),
                         lambda: robot.return_to_carpark(robot.get_last_successful_arg()/2, True)
@@ -281,9 +289,11 @@ class STMLink(Link):
                     for action in (
                         lambda: robot.position_from_obstacle(30),
                         lambda: robot.turn_right(90, True),
-                        lambda: robot.crawl_backward(30),
+                        # lambda: robot.crawl_backward(30),
+                        lambda: robot.move_forward(30),
                         lambda: robot.move_til_left_obs_turn(90, True),
-                        lambda: robot.crawl_forward(5),
+                        # lambda: robot.crawl_forward(5),
+                        lambda: robot.move_forward(5),
                         lambda: robot.turn_left(90, True),
                         lambda: robot.move_til_left_obs_turn(90, True),
                         lambda: robot.return_to_carpark(robot.get_last_successful_arg()/2, False)

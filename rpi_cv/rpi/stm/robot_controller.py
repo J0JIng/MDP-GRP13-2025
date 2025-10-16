@@ -609,13 +609,15 @@ class RobotController:
                 "position_from_obstacle: moving forward by %s cm to reach target",
                 move_cm,
             )
-            return self.crawl_forward(move_cm, retry=retry)
+            # return self.crawl_forward(move_cm, retry=retry)
+            return self.move_forward(move_cm, retry=retry)
 
         logger.info(
             "position_from_obstacle: moving backward by %s cm to reach target",
             move_cm,
         )
-        return self.crawl_backward(move_cm, retry=retry)
+        # return self.crawl_backward(move_cm, retry=retry)
+        return self.move_backward(move_cm, retry=retry)
 
     def _send_crawl_distance(self, dist: int, motor_cmd: SerialCmdBaseLL.MotorCmd, retry: bool) -> bool:
         attempts = 3 if retry else 1
