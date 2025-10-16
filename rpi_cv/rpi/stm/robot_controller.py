@@ -1260,7 +1260,7 @@ class RobotController:
         """
         height should be half of the length of the second obstacle
         """
-        if not self.move_forward(self.base[-1] + 40):
+        if not self.move_forward(int(self.base[-1]) + 40):
             return False
 
         base = self.base[-2]  # add 23 because of initial move_forward of 30 before first obstacle
