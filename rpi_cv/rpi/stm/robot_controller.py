@@ -1040,6 +1040,8 @@ class RobotController:
 
     def poll_obstruction(self, dist_from_obstacle: float = 30.0, read_once: bool = False):
         sensor = self.distance_sensor
+        logger.debug("sensor object: %s", sensor)
+        logger.debug("poll_obstruction: dist_from_obstacle=%.1f read_once=%s", dist_from_obstacle, read_once)
         counter = 0
         if sensor is None:
             return None
