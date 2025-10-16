@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Deque, Optional, Callable
 import asyncio
+import logging
 import math
 import statistics
 import time
@@ -16,6 +17,10 @@ from gpiozero.exc import DistanceSensorNoEcho
 
 from stm.serial_cmd_base_ll import SerialCmdBaseLL
 import RPi.GPIO as GPIO
+from helper.logger import prepare_logger
+
+
+logger = prepare_logger(__name__, level=logging.DEBUG)
 
 '''
 Python API that abstracts away the low-level serial communication with the robot.
@@ -200,15 +205,18 @@ class UltrasonicSensor:
         samples = []
         for idx in range(5):
             measurement = self.read_distance()
-            print("Ultrasonic reading: ", measurement)
+            logger.debug("UltrasonicSensor.distance sample #%d: %s", idx + 1, measurement)
             if measurement is not None and math.isfinite(measurement):
                 samples.append(round(measurement))
             if idx < 4:
                 time.sleep(0.1)
         if len(samples) < 3:
+            logger.debug("UltrasonicSensor.distance insufficient samples: %s", samples)
             return None
         samples.sort()
-        return float(samples[len(samples) // 2])
+        median = float(samples[len(samples) // 2])
+        logger.debug("UltrasonicSensor.distance median=%.2f from samples=%s", median, samples)
+        return median
 
     def close(self) -> None:
         try:
@@ -351,9 +359,22 @@ class RobotController:
 
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if ack:
+                logger.debug(
+                    "move_forward: ack received dist=%s no_brakes=%s attempt=%d",
+                    dist,
+                    no_brakes,
+                    attempt + 1,
+                )
                 return self._wait_for_motion_complete()
 
             self._sleep_cmd_retry(attempt, attempts)
+            logger.debug(
+                "move_forward retry %d/%d dist=%s no_brakes=%s",
+                attempt + 1,
+                attempts,
+                dist,
+                no_brakes,
+            )
 
         return False
 
@@ -404,8 +425,14 @@ class RobotController:
             and dist != 999
             and dist > self.CRAWL_CHUNK_SIZE_CM
         ):
+            logger.info(
+                "crawl_forward: chunking dist=%s with chunk_size=%s",
+                dist,
+                self.CRAWL_CHUNK_SIZE_CM,
+            )
             return self._execute_chunked_crawl(dist, self.drv.MotorCmd.FWD_CHAR, retry)
 
+        logger.debug("crawl_forward: sending single crawl dist=%s", dist)
         return self._send_crawl_distance(dist, self.drv.MotorCmd.FWD_CHAR, retry)
 
     def crawl_forward_until_obstacle(self, dist=30, retry: bool = True) -> bool:
@@ -465,8 +492,14 @@ class RobotController:
             and dist != 999
             and dist > self.CRAWL_CHUNK_SIZE_CM
         ):
+            logger.info(
+                "crawl_backward: chunking dist=%s with chunk_size=%s",
+                dist,
+                self.CRAWL_CHUNK_SIZE_CM,
+            )
             return self._execute_chunked_crawl(dist, self.drv.MotorCmd.BWD_CHAR, retry)
 
+        logger.debug("crawl_backward: sending single crawl dist=%s", dist)
         return self._send_crawl_distance(dist, self.drv.MotorCmd.BWD_CHAR, retry)
 
     def crawl_backward_from_obstacle(self, dist: int = 30, retry: bool = True) -> bool:
@@ -526,32 +559,55 @@ class RobotController:
         Adjust the robot so that its front is approximately [dist] cm from the obstacle.
         Moves forward if it is too far, or backward if it is too close.
         '''
-
+        logger.info("position_from_obstacle: target distance=%s cm", dist)
         self.validate_dist(dist)
 
         current_distance = self.poll_obstruction(read_once=True)
         self.base.append(current_distance)
-        print("dist:", current_distance)
+        logger.debug("position_from_obstacle: initial distance reading=%s", current_distance)
         if current_distance is None:
+            logger.warning("position_from_obstacle: ultrasonic reading unavailable")
             return False
 
         delta_cm = float(current_distance) - float(dist)
+        logger.debug(
+            "position_from_obstacle: delta_cm=%.2f (target=%s)",
+            delta_cm,
+            dist,
+        )
         if abs(delta_cm) < 0.5:
+            logger.debug("position_from_obstacle: already within tolerance")
             return True
 
         move_cm = int(round(abs(delta_cm)))
         if move_cm <= 0:
+            logger.debug("position_from_obstacle: rounded movement zero, nothing to do")
             return True
 
         if delta_cm > 0:
+            logger.info(
+                "position_from_obstacle: moving forward by %s cm to reach target",
+                move_cm,
+            )
             return self.crawl_forward(move_cm, retry=retry)
 
+        logger.info(
+            "position_from_obstacle: moving backward by %s cm to reach target",
+            move_cm,
+        )
         return self.crawl_backward(move_cm, retry=retry)
 
     def _send_crawl_distance(self, dist: int, motor_cmd: SerialCmdBaseLL.MotorCmd, retry: bool) -> bool:
         attempts = 3 if retry else 1
 
         for attempt in range(attempts):
+            logger.debug(
+                "_send_crawl_distance attempt %d/%d motor_cmd=%s dist=%s",
+                attempt + 1,
+                attempts,
+                getattr(motor_cmd, "name", motor_cmd),
+                dist,
+            )
             self.drv.construct_cmd()
             self.drv.add_cmd_byte(True)
             self.drv.add_module_byte(self.drv.Modules.MOTOR)
@@ -561,10 +617,25 @@ class RobotController:
             self.drv.pad_to_end()
             ack = self.drv.ll_is_valid(self.drv.send_cmd())
             if ack:
+                logger.debug(
+                    "_send_crawl_distance ack received motor_cmd=%s dist=%s",
+                    getattr(motor_cmd, "name", motor_cmd),
+                    dist,
+                )
                 return self._wait_for_motion_complete()
 
             self._sleep_cmd_retry(attempt, attempts)
+            logger.debug(
+                "_send_crawl_distance retry scheduled motor_cmd=%s dist=%s",
+                getattr(motor_cmd, "name", motor_cmd),
+                dist,
+            )
 
+        logger.warning(
+            "_send_crawl_distance exhausted retries motor_cmd=%s dist=%s",
+            getattr(motor_cmd, "name", motor_cmd),
+            dist,
+        )
         return False
 
     def _execute_chunked_crawl(self, dist: int, motor_cmd: SerialCmdBaseLL.MotorCmd, retry: bool) -> bool:
@@ -572,13 +643,26 @@ class RobotController:
 
         while remaining > 0:
             segment = min(self.CRAWL_CHUNK_SIZE_CM, remaining)
+            logger.debug(
+                "_execute_chunked_crawl: segment=%s remaining_before=%s",
+                segment,
+                remaining,
+            )
             if not self._send_crawl_distance(segment, motor_cmd, retry):
+                logger.warning(
+                    "_execute_chunked_crawl: segment failed motor_cmd=%s", getattr(motor_cmd, "name", motor_cmd)
+                )
                 return False
 
             remaining -= segment
             if remaining > 0:
+                logger.debug(
+                    "_execute_chunked_crawl: sleeping between segments remaining_after=%s",
+                    remaining,
+                )
                 time.sleep(self.CRAWL_CHUNK_DELAY_S)
 
+        logger.debug("_execute_chunked_crawl: completed all segments")
         return True
 
     def turn_left(self, angle: int, dir: bool, no_brakes: bool = False, retry: bool = True) -> bool:
@@ -755,6 +839,7 @@ class RobotController:
         while (time.monotonic() - start_time) <= self.MOVE_COMPLETION_TIMEOUT_S:
             status = self.poll_is_moving()
             if status is None:
+                logger.warning("_wait_for_motion_complete: poll_is_moving returned None")
                 return False
 
             now = time.monotonic()
@@ -763,13 +848,18 @@ class RobotController:
                 last_motion_time = now
             else:
                 if observed_motion and (now - last_motion_time) >= self.MOVE_STOP_STABLE_WINDOW_S:
+                    logger.debug("_wait_for_motion_complete: motion stopped after %.2fs", now - start_time)
                     return True
                 if (not observed_motion) and (now - start_time) >= self.MOVE_START_TIMEOUT_S:
+                    logger.debug("_wait_for_motion_complete: no motion detected within start timeout")
                     return True
 
             time.sleep(self.MOVE_POLL_INTERVAL_S)
 
         self.set_reset_sensor_values()
+        logger.warning(
+            "_wait_for_motion_complete: timeout after %.2fs", time.monotonic() - start_time
+        )
         return False
 
     def _poll_until_distance_at_least(self, dist: float) -> Optional[bool]:
@@ -974,8 +1064,11 @@ class RobotController:
                     sleep(0.1)
                     continue
                 distance_cm = float(measurement)
-                print(f"{distance_cm:.1f} cm")
+                logger.debug("poll_obstruction: raw reading=%.1f cm", distance_cm)
                 if distance_cm <= dist_from_obstacle:
+                    logger.info(
+                        "poll_obstruction: threshold reached (<= %.1f cm)", dist_from_obstacle
+                    )
                     return True
                 # last4.append(distance_cm)
 
@@ -985,6 +1078,7 @@ class RobotController:
                 sleep(0.1)
 
         except KeyboardInterrupt:
+            logger.info("poll_obstruction: interrupted by keyboard")
             return None
 
     def poll_is_moving(self):

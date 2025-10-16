@@ -206,6 +206,7 @@ class STMLink(Link):
                 if robot is not None:
                     self.logger.debug("OB01: preparing to position from obstacle (30cm target)")
                 success = bool(robot and robot.position_from_obstacle(30))
+                self.logger.debug("OB01: position_from_obstacle returned %s", success)
                 performed_action = robot is not None
 
             elif token == "UL00":  # small obstacle left
