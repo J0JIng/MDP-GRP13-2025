@@ -260,6 +260,7 @@ class STMLink(Link):
                 if robot is not None:
                     success = True
                     for action in (
+                        lambda: robot.position_from_obstacle(30),
                         lambda: robot.turn_left(90, True),
                         lambda: robot.crawl_backward(30),
                         lambda: robot.move_til_right_obs_turn(90, True),
@@ -278,6 +279,7 @@ class STMLink(Link):
                 if robot is not None:
                     success = True
                     for action in (
+                        lambda: robot.position_from_obstacle(30),
                         lambda: robot.turn_right(90, True),
                         lambda: robot.crawl_backward(30),
                         lambda: robot.move_til_left_obs_turn(90, True),
