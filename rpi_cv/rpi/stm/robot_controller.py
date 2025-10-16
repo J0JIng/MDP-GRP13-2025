@@ -275,7 +275,8 @@ class RobotController:
         self.base = []
         self.base.append(10)  # first obstacle
         self.base.append(10)  # buffer between back of robot and first obstacle
-        self.base.append(10)
+        self.base.append(5)
+        self.base.append(30)    # this is for the initial 30cm move forward to first obstacle
         # GPIO.setmode(GPIO.BCM)
         # self.cmd_pin_state = PinState.Z
         # self.obstr_pin_state = PinState.Z
@@ -362,7 +363,7 @@ class RobotController:
         999 is interpreted as "move FORWARD until obstacle detected".
         returns True if command was acknowledged, False otherwise.
         '''
-
+        self.set_reset_sensor_values()
         self.validate_dist(dist)
 
         attempts = 3 if retry else 1
@@ -405,7 +406,7 @@ class RobotController:
         999 is interpreted as "move BACKWARD until obstacle detected".
         returns True if command was acknowledged, False otherwise.
         '''
-
+        self.set_reset_sensor_values()
         self.validate_dist(dist)
 
         attempts = 3 if retry else 1
@@ -574,15 +575,20 @@ class RobotController:
 
         return False
 
-    def position_from_obstacle(self, dist: int, retry: bool = True) -> bool:
+    def position_from_obstacle(self, dist: int, retry: bool = True, first=False) -> bool:
         '''
         Adjust the robot so that its front is approximately [dist] cm from the obstacle.
         Moves forward if it is too far, or backward if it is too close.
         '''
+        self.set_reset_sensor_values()
         logger.info("position_from_obstacle: target distance=%s cm", dist)
         self.validate_dist(dist)
+        current_distance = 0
 
-        current_distance = self.poll_obstruction(read_once=True)
+        while first and (current_distance is None or current_distance <= 25):
+            current_distance = self.poll_obstruction(read_once=True)
+            time.sleep(0.5)
+
         self.base.append(current_distance)
         logger.debug("position_from_obstacle: initial distance reading=%s", current_distance)
         if current_distance is None:
@@ -1224,7 +1230,32 @@ class RobotController:
         base = sum(self.base)
         height += 10  # add 10cm for robot offset from 2nd obstacle
         angle = int(angle_acb_deg(height, base))
-        print(f"ANGLE: {angle}, HEIGHT: {height}, BASE: {base}, RIGHT TURN: {right_turn}")
+        logger.debug(f"ANGLE: {angle}, HEIGHT: {height}, BASE: {base}, RIGHT TURN: {right_turn}")
+
+        if right_turn:  # +- 5 degrees to compensate for drift
+            self.turn_right(angle, True)
+        else:
+            self.turn_left(angle, True)
+
+        hyp = math.hypot(height, base)
+        # self.crawl_forward(int(hyp))
+        self.move_forward(int(hyp))
+        if right_turn:
+            self.turn_left(angle, True)
+        else:
+            self.turn_right(angle, True)
+        self.position_from_obstacle(15)
+
+    def return_to_carpark_v2(self, height: float, right_turn: bool):
+        """
+        height should be half of the length of the second obstacle
+        """
+        self.move_forward(self.base[-1] + 40)
+
+        base = self.base[-2] + 23  # add 30 becauase of initial move_forward of 30 before first obstacle
+        height += 10  # add 10cm for robot offset from 2nd obstacle
+        angle = int(angle_acb_deg(height, base))
+        logger.debug(f"ANGLE: {angle}, HEIGHT: {height}, BASE: {base}, RIGHT TURN: {right_turn}")
 
         if right_turn:  # +- 5 degrees to compensate for drift
             self.turn_right(angle, True)

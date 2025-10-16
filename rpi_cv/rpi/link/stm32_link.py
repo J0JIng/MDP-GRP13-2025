@@ -67,15 +67,20 @@ class STMLink(Link):
     def connect(self):
         """Initialise RobotController using configured serial port and baud rate."""
         self.logger.info("Connecting to STM32 via RobotController")
+        port = self.config["serial_port"]["id"]
+        baud = self.config["serial_port"]["baud_rate"]
+
         try:
-            port = self.config["serial_port"]["id"]
-            baud = self.config["serial_port"]["baud_rate"]
-            self.robot = RobotController(port, baud)
-            self._robot_pid = os.getpid()
-            self.logger.info("RobotController initialised (port=%s baud=%s)", port, baud)
+            probe = RobotController(port, baud)
+            probe.close()
+            self.logger.info("RobotController connectivity verified (port=%s baud=%s)", port, baud)
         except Exception as e:
-            self.logger.error("Failed to initialise RobotController: %s")
+            self.logger.error("Failed to initialise RobotController: %s", e)
             raise
+
+        # Ensure we lazily create the operational controller in the active process
+        self.robot = None
+        self._robot_pid = None
 
     def disconnect(self):
         """Disconnect RobotController (release reference)."""
@@ -211,6 +216,14 @@ class STMLink(Link):
                     robot = _ensure_robot()
                     success = bool(robot and robot.crawl_backward(dist))
                     performed_action = robot is not None
+
+            elif token == "OB00":
+                robot = _ensure_robot()
+                if robot is not None:
+                    self.logger.debug("OB00: preparing to position from obstacle (30cm target)")
+                success = bool(robot and robot.position_from_obstacle(30, first=True))
+                self.logger.debug("OB00: position_from_obstacle returned %s", success)
+                performed_action = robot is not None
 
             elif token == "OB01":
                 robot = _ensure_robot()
