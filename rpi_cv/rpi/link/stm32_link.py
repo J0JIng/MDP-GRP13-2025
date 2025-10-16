@@ -203,7 +203,7 @@ class STMLink(Link):
 
             elif token == "OB01":
                 robot = _ensure_robot()
-                success = bool(robot and robot.crawl_forward_until_obstacle())
+                success = bool(robot and robot.position_from_obstacle(30))
                 performed_action = robot is not None
 
             elif token == "UL00":  # small obstacle left
