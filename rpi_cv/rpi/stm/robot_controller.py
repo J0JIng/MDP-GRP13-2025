@@ -275,7 +275,7 @@ class RobotController:
         self.base = []
         self.base.append(10)  # first obstacle
         self.base.append(10)  # buffer between back of robot and first obstacle
-        self.base.append(5)
+        self.base.append(10)
         # GPIO.setmode(GPIO.BCM)
         # self.cmd_pin_state = PinState.Z
         # self.obstr_pin_state = PinState.Z
