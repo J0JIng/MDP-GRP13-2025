@@ -32,7 +32,7 @@ namespace AppParser {
 		MOVE_LEFT_BWD,
 		MOVE_HALT,
 		MOVE_T2_S180R,
-		MOVE_T2_S90R,
+		MOVE_T2_02,
 		MOVE_T2_O1, // move around 1st obstacle
 		MOVE_FWD_UNTIL_LEFT_OBS,
 		MOVE_FWD_UNTIL_RIGHT_OBS
@@ -137,7 +137,7 @@ namespace AppParser {
 
 	static constexpr BUF_CMP_t LAST_HALT_CHAR = 'o';
 	static constexpr BUF_CMP_t T2_180R_CHAR = '!';
-	static constexpr BUF_CMP_t T2_90R_CHAR = '?';
+	static constexpr BUF_CMP_t T2_02_CHAR = '?';
 	static constexpr BUF_CMP_t T2_O1_CHAR = '@';
 
 	static constexpr BUF_CMP_t END_CHAR = 'z';

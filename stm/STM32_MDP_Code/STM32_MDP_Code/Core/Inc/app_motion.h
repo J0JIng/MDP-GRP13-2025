@@ -104,8 +104,8 @@ namespace AppMotion {
 			void move(bool isFwd, uint32_t arg, uint32_t speed, bool isCrawl, bool nostop);
 			void moveAndTurnAfterObstacle(bool isRight, bool isFwd, bool nostop, uint32_t arg);
 			void emergencyStop();
-			void task2ScanAndRot(bool dir);
-			void task2ScanAndReturn(bool dir);
+			void task2ReturnToOrigin(bool dir);
+			void task2PassObstTwo(bool dir);
 			void task2PassObstOne(bool dir);
 			~MotionController() {
 			}
