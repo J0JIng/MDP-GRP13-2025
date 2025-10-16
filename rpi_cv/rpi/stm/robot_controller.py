@@ -126,7 +126,21 @@ class UltrasonicSensor:
                     message=".*no echo received.*",
                     category=UserWarning,
                 )
-                raw_cm = float(self.sensor.distance) * 100.0
+                distance_ratio = self.sensor.distance
+
+            if distance_ratio is None:
+                logger.debug("UltrasonicSensor._read_raw_distance_cm: sensor.distance returned None")
+                return None
+
+            try:
+                raw_cm = float(distance_ratio) * 100.0
+            except (TypeError, ValueError) as exc:
+                logger.debug(
+                    "UltrasonicSensor._read_raw_distance_cm: invalid distance value %r (%s)",
+                    distance_ratio,
+                    exc,
+                )
+                return None
 
             logger.debug("UltrasonicSensor._read_raw_distance_cm: read raw_cm=%.2f", raw_cm)
         except DistanceSensorNoEcho:
