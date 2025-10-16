@@ -247,6 +247,7 @@ class RobotController:
         self.base = []
         self.base.append(10)  # first obstacle
         self.base.append(10)  # buffer between back of robot and first obstacle
+        self.base.append(5)
         # GPIO.setmode(GPIO.BCM)
         # self.cmd_pin_state = PinState.Z
         # self.obstr_pin_state = PinState.Z
@@ -1091,9 +1092,9 @@ class RobotController:
         print(f"ANGLE: {angle}, HEIGHT: {height}, BASE: {base}, RIGHT TURN: {right_turn}")
 
         if right_turn:  # +- 5 degrees to compensate for drift
-            self.turn_right(angle + 5, True)
+            self.turn_right(angle, True)
         else:
-            self.turn_left(angle + 5, True)
+            self.turn_left(angle, True)
 
         hyp = math.hypot(height, base)
         # self.crawl_forward(int(hyp))
