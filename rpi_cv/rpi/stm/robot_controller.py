@@ -581,6 +581,7 @@ class RobotController:
         Moves forward if it is too far, or backward if it is too close.
         '''
         self.set_reset_sensor_values()
+        self.move_forward(30)
         logger.info("position_from_obstacle: target distance=%s cm", dist)
         self.validate_dist(dist)
         current_distance = 0
