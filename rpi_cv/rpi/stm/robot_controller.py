@@ -146,6 +146,7 @@ class UltrasonicSensor:
     def _read_smoothed_distance_cm(self, force_read: bool = False) -> Optional[float]:
         now = time.monotonic()
         if force_read:
+            logger.debug("UltrasonicSensor._read_smoothed_distance_cm: force_read=True, calling _read_raw_distance_cm")
             measurement_cm = self._read_raw_distance_cm()
             logger.debug("UltrasonicSensor._read_raw_distance_cm: %s", measurement_cm)
             if measurement_cm is None:
