@@ -177,9 +177,9 @@ static float angDiff(float a, float b) {
 //			osDelay(4500);
 //			self->move(false, 50, 35, false, false);
 
-//			self->move(true, 50, 35, false, false);
+//			self->moveConstantPWM(true, 50, 10000);
 //			self->turn(true, true, false, 90);
-//			self->move(false, 50, 35, false, false);
+			//self->move(false, 50, 35, false, false);
 //			self->turn(true, true, false, 90);
 			//self->moveAndTurnAfterObstacle(true, true, false, 90);
 
@@ -236,11 +236,37 @@ static float angDiff(float a, float b) {
 	    lmotor->setSpeed(speed, isFwd);
 	    rmotor->setSpeed(speed, isFwd);
 
-	    // Run for fixed time
+	    // F1-style side-to-side weaving while moving: sinusoidal steering
+	    // safe defaults: frequency = 0.8 Hz, amplitude limited by SLIGHT deltas
+	    const float weave_freq_hz = 0.8f; // cycles per second
+	    const float TWO_PI = 6.28318530718f;
+	    // map a small angular amplitude to PWM counts using a conservative gain
+	    const float WEAVE_ANG_DEG = 6.0f; // degrees of steering swing
+	    const float SERVO_WEAVE_GAIN = 1.0f; // pwm counts per degree
+	    int32_t max_left = SLIGHT_LEFT_DELTA;
+	    int32_t max_right = SLIGHT_RIGHT_DELTA;
+
 	    uint32_t timeStart = HAL_GetTick();
 	    while (HAL_GetTick() - timeStart < duration_ms) {
 	        if (emergency) break;
-	        osDelay(10);
+
+	        // elapsed time in seconds
+	        float t = (float)(HAL_GetTick() - timeStart) / 1000.0f;
+
+	        // sinusoidal desired angle in degrees (-WEAVE_ANG_DEG .. +WEAVE_ANG_DEG)
+	        float ang = WEAVE_ANG_DEG * sinf(TWO_PI * weave_freq_hz * t);
+
+	        // convert to pwm offset
+	        int32_t pwm_offset = (int32_t)(ang * SERVO_WEAVE_GAIN);
+
+	        // clamp by side-specific slight deltas
+	        if (pwm_offset > max_right) pwm_offset = max_right;
+	        if (pwm_offset < -max_left) pwm_offset = -max_left;
+
+	        uint32_t pwm_cmd = (uint32_t)((int32_t) CENTER_POS_PWM + pwm_offset);
+	        servo->turnToPos(pwm_cmd);
+
+	        osDelay(15); // small delay to allow smooth weaving and sensor updates
 	        osThreadYield();
 	    }
 
@@ -258,7 +284,7 @@ static float angDiff(float a, float b) {
 		rmotor->setSpeed(speed, isFwd);
 
 		// Caution Manual override !!!!
-		isCrawl = true;
+		//isCrawl = true;
 
 		if (isCrawl)
 		{

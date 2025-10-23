@@ -276,29 +276,6 @@ class RobotController:
         self.base.append(10)  # first obstacle
         self.base.append(10)  # buffer between back of robot and first obstacle
         self.base.append(7)
-        # GPIO.setmode(GPIO.BCM)
-        # self.cmd_pin_state = PinState.Z
-        # self.obstr_pin_state = PinState.Z
-
-        # GPIO.setup(self.PIN_COMMAND, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        # GPIO.setup(self.PIN_OBSTACLE, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-
-        # if GPIO.input(self.PIN_COMMAND) == GPIO.HIGH:
-        #     print("[CONTROLLER] WARN: COMMAND PIN N/C OR UNEXPECTED STATE")
-        # else:
-        #     self.cmd_pin_state = PinState.LOW
-
-        # if GPIO.input(self.PIN_OBSTACLE) == GPIO.HIGH:
-        #     print("[CONTROLLER] WARN: OBSTACLE PIN N/C OR UNEXPECTED STATE")
-        # else:
-        #     self.obstr_pin_state = PinState.LOW
-
-        # self._inst_obstr_cb = _inst_obstr_cb
-        # if self._inst_obstr_cb is not None:
-        #     GPIO.add_event_detect(self.PIN_OBSTACLE,
-        #                           GPIO.RISING,
-        #                           callback=self.sig_obst_callback,
-        #                           bouncetime=50)
 
     def validate_dist(self, dist: int) -> None:
         '''

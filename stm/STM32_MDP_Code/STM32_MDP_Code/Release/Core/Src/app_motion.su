@@ -1,25 +1,25 @@
 ../Core/Src/app_motion.cpp:25:14:float AppMotion::angDiff(float, float)	0	static
 ../Core/Src/app_motion.cpp:32:2:AppMotion::MotionController::MotionController(u_ctx*)	0	static
-../Core/Src/app_motion.cpp:1366:7:void AppMotion::MotionController::emergencyStop()	0	static
-../Core/Src/app_motion.cpp:1371:2:AppMotion::Servo::Servo(TIM_HandleTypeDef*, uint32_t, uint32_t, uint32_t, uint32_t)	8	static
-../Core/Src/app_motion.cpp:1393:7:void AppMotion::Servo::turnToPos(uint32_t)	0	static
-../Core/Src/app_motion.cpp:1381:7:void AppMotion::Servo::turnLeft()	0	static
-../Core/Src/app_motion.cpp:1385:7:void AppMotion::Servo::turnRight()	0	static
-../Core/Src/app_motion.cpp:1389:7:void AppMotion::Servo::turnFront()	0	static
-../Core/Src/app_motion.cpp:1403:2:AppMotion::Motor::Motor(TIM_HandleTypeDef*, uint32_t, uint32_t, uint32_t)	16	static
+../Core/Src/app_motion.cpp:1392:7:void AppMotion::MotionController::emergencyStop()	0	static
+../Core/Src/app_motion.cpp:1397:2:AppMotion::Servo::Servo(TIM_HandleTypeDef*, uint32_t, uint32_t, uint32_t, uint32_t)	8	static
+../Core/Src/app_motion.cpp:1419:7:void AppMotion::Servo::turnToPos(uint32_t)	0	static
+../Core/Src/app_motion.cpp:1407:7:void AppMotion::Servo::turnLeft()	0	static
+../Core/Src/app_motion.cpp:1411:7:void AppMotion::Servo::turnRight()	0	static
+../Core/Src/app_motion.cpp:1415:7:void AppMotion::Servo::turnFront()	0	static
+../Core/Src/app_motion.cpp:1429:2:AppMotion::Motor::Motor(TIM_HandleTypeDef*, uint32_t, uint32_t, uint32_t)	16	static
 ../Core/Src/app_motion.cpp:38:7:void AppMotion::MotionController::start()	80	static
-../Core/Src/app_motion.cpp:1419:7:bool AppMotion::Motor::setSpeed(uint32_t, bool)	8	static
-../Core/Src/app_motion.cpp:1437:7:bool AppMotion::Motor::_setDutyCycleVal(uint32_t, bool)	8	static
-../Core/Src/app_motion.cpp:1454:7:void AppMotion::Motor::halt()	0	static
-../Core/Src/app_motion.cpp:231:7:void AppMotion::MotionController::moveConstantPWM(bool, uint32_t, uint32_t)	24	static
-../Core/Src/app_motion.cpp:434:7:void AppMotion::MotionController::turn(bool, bool, bool, uint32_t)	88	static
-../Core/Src/app_motion.cpp:775:7:void AppMotion::MotionController::task2PassObstOne(bool)	72	static
-../Core/Src/app_motion.cpp:1459:7:void AppMotion::Motor::setForward()	0	static
-../Core/Src/app_motion.cpp:1464:7:void AppMotion::Motor::setBackward()	0	static
-../Core/Src/app_motion.cpp:1471:2:AppMotion::Encoder::Encoder(TIM_HandleTypeDef*, uint32_t)	8	static
-../Core/Src/app_motion.cpp:1479:11:uint32_t AppMotion::Encoder::getCount()	0	static
-../Core/Src/app_motion.cpp:1483:11:uint32_t AppMotion::Encoder::getDelta(uint32_t, uint32_t)	0	static
-../Core/Src/app_motion.cpp:252:7:void AppMotion::MotionController::move(bool, uint32_t, uint32_t, bool, bool)	88	static
-../Core/Src/app_motion.cpp:550:7:void AppMotion::MotionController::moveAndTurnAfterObstacle(bool, bool, bool, uint32_t)	104	static
-../Core/Src/app_motion.cpp:1038:7:void AppMotion::MotionController::task2PassObstTwo(bool)	88	static
+../Core/Src/app_motion.cpp:1445:7:bool AppMotion::Motor::setSpeed(uint32_t, bool)	8	static
+../Core/Src/app_motion.cpp:1463:7:bool AppMotion::Motor::_setDutyCycleVal(uint32_t, bool)	8	static
+../Core/Src/app_motion.cpp:1480:7:void AppMotion::Motor::halt()	0	static
+../Core/Src/app_motion.cpp:231:7:void AppMotion::MotionController::moveConstantPWM(bool, uint32_t, uint32_t)	40	static
+../Core/Src/app_motion.cpp:460:7:void AppMotion::MotionController::turn(bool, bool, bool, uint32_t)	88	static
+../Core/Src/app_motion.cpp:801:7:void AppMotion::MotionController::task2PassObstOne(bool)	72	static
+../Core/Src/app_motion.cpp:1485:7:void AppMotion::Motor::setForward()	0	static
+../Core/Src/app_motion.cpp:1490:7:void AppMotion::Motor::setBackward()	0	static
+../Core/Src/app_motion.cpp:1497:2:AppMotion::Encoder::Encoder(TIM_HandleTypeDef*, uint32_t)	8	static
+../Core/Src/app_motion.cpp:1505:11:uint32_t AppMotion::Encoder::getCount()	0	static
+../Core/Src/app_motion.cpp:1509:11:uint32_t AppMotion::Encoder::getDelta(uint32_t, uint32_t)	0	static
+../Core/Src/app_motion.cpp:278:7:void AppMotion::MotionController::move(bool, uint32_t, uint32_t, bool, bool)	120	static
+../Core/Src/app_motion.cpp:576:7:void AppMotion::MotionController::moveAndTurnAfterObstacle(bool, bool, bool, uint32_t)	104	static
+../Core/Src/app_motion.cpp:1064:7:void AppMotion::MotionController::task2PassObstTwo(bool)	88	static
 ../Core/Src/app_motion.cpp:110:7:static void AppMotion::MotionController::motionTask(void*)	72	static
